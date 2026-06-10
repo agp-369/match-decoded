@@ -1,0 +1,8 @@
+# Backend dependencies
+fastapi==0.111.0
+uvicorn==0.30.1
+pydantic==2.7.4
+pandas==2.2.3
+scikit-learn==1.8.0
+joblib==1.5.3
+requests==2.32.5
