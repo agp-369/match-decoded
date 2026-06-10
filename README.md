@@ -1,6 +1,18 @@
+---
+title: Match Decoded
+emoji: ⚽
+colorFrom: indigo
+colorTo: blue
+sdk: streamlit
+sdk_version: "1.54.0"
+app_file: frontend/app.py
+pinned: false
+license: apache-2.0
+---
+
 # ⚽ Match Decoded
 
-### AI-powered football match explainability — powered by IBM Granite
+### AI-powered football match explainability — powered by IBM Granite + LangChain + Docling
 
 **IBM AI Builders Challenge 2026 · June Football Challenge**
 
