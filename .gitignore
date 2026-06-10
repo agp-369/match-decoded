@@ -8,6 +8,5 @@ build/
 .venv/
 venv/
 env/
-*.pkl
 models/*.pkl
 .DS_Store
