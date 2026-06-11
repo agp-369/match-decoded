@@ -33,7 +33,23 @@ export default function App() {
     <div className="container">
       {}
       <section className="hero">
-        <span className="hero-icon">🏆</span>
+        <svg className="hero-logo" viewBox="0 0 100 100" width="52" height="52" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="50" cy="50" r="48" stroke="url(#goldGrad)" strokeWidth="1.5" fill="rgba(245,158,11,0.04)"/>
+          <circle cx="50" cy="50" r="45" stroke="url(#goldGrad)" strokeWidth="0.5" strokeDasharray="2 4" fill="none"/>
+          <polygon points="50,12 65,30 58,52 42,52 35,30" stroke="#fbbf24" strokeWidth="1.2" fill="rgba(251,191,36,0.12)"/>
+          <line x1="35" y1="30" x2="10" y2="35" stroke="#f59e0b" strokeWidth="0.8"/>
+          <line x1="65" y1="30" x2="90" y2="35" stroke="#f59e0b" strokeWidth="0.8"/>
+          <line x1="50" y1="12" x2="50" y2="5" stroke="#f59e0b" strokeWidth="0.8"/>
+          <line x1="42" y1="52" x2="30" y2="65" stroke="#f59e0b" strokeWidth="0.8"/>
+          <line x1="58" y1="52" x2="70" y2="65" stroke="#f59e0b" strokeWidth="0.8"/>
+          <defs>
+            <linearGradient id="goldGrad" x1="0" y1="0" x2="100" y2="100">
+              <stop offset="0%" stopColor="#fbbf24"/>
+              <stop offset="50%" stopColor="#f59e0b"/>
+              <stop offset="100%" stopColor="#d97706"/>
+            </linearGradient>
+          </defs>
+        </svg>
         <div className="hero-badge">World Cup · International Football</div>
         <h1 className="hero-title">Match Decoded</h1>
         <p className="hero-subtitle">
