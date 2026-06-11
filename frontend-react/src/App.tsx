@@ -33,22 +33,27 @@ export default function App() {
     <div className="container">
       {}
       <section className="hero">
-        <svg className="hero-logo" viewBox="0 0 100 100" width="52" height="52" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="50" cy="50" r="48" stroke="url(#goldGrad)" strokeWidth="1.5" fill="rgba(245,158,11,0.04)"/>
-          <circle cx="50" cy="50" r="45" stroke="url(#goldGrad)" strokeWidth="0.5" strokeDasharray="2 4" fill="none"/>
-          <polygon points="50,12 65,30 58,52 42,52 35,30" stroke="#fbbf24" strokeWidth="1.2" fill="rgba(251,191,36,0.12)"/>
-          <line x1="35" y1="30" x2="10" y2="35" stroke="#f59e0b" strokeWidth="0.8"/>
-          <line x1="65" y1="30" x2="90" y2="35" stroke="#f59e0b" strokeWidth="0.8"/>
-          <line x1="50" y1="12" x2="50" y2="5" stroke="#f59e0b" strokeWidth="0.8"/>
-          <line x1="42" y1="52" x2="30" y2="65" stroke="#f59e0b" strokeWidth="0.8"/>
-          <line x1="58" y1="52" x2="70" y2="65" stroke="#f59e0b" strokeWidth="0.8"/>
+        <svg className="hero-logo" viewBox="0 0 100 100" width="56" height="56" fill="none" xmlns="http://www.w3.org/2000/svg">
           <defs>
-            <linearGradient id="goldGrad" x1="0" y1="0" x2="100" y2="100">
-              <stop offset="0%" stopColor="#fbbf24"/>
-              <stop offset="50%" stopColor="#f59e0b"/>
-              <stop offset="100%" stopColor="#d97706"/>
-            </linearGradient>
+            <radialGradient id="ballGrad" cx="35%" cy="35%" r="65%">
+              <stop offset="0%" stopColor="#fef3c7"/>
+              <stop offset="25%" stopColor="#fbbf24"/>
+              <stop offset="65%" stopColor="#f59e0b"/>
+              <stop offset="100%" stopColor="#92400e"/>
+            </radialGradient>
+            <radialGradient id="panelGrad" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="rgba(180,83,9,0.15)"/>
+              <stop offset="100%" stopColor="rgba(180,83,9,0.35)"/>
+            </radialGradient>
           </defs>
+          <circle cx="50" cy="50" r="48" fill="url(#ballGrad)" stroke="#d97706" strokeWidth="1.2"/>
+          <polygon points="50,30 67.1,42.4 60.6,62.5 39.4,62.5 32.9,42.4" fill="url(#panelGrad)" stroke="#92400e" strokeWidth="1.3"/>
+          <line x1="50" y1="30" x2="50" y2="3" stroke="#92400e" strokeWidth="0.9" strokeLinecap="round"/>
+          <line x1="67.1" y1="42.4" x2="85" y2="22" stroke="#92400e" strokeWidth="0.9" strokeLinecap="round"/>
+          <line x1="60.6" y1="62.5" x2="78" y2="80" stroke="#92400e" strokeWidth="0.9" strokeLinecap="round"/>
+          <line x1="39.4" y1="62.5" x2="22" y2="80" stroke="#92400e" strokeWidth="0.9" strokeLinecap="round"/>
+          <line x1="32.9" y1="42.4" x2="15" y2="22" stroke="#92400e" strokeWidth="0.9" strokeLinecap="round"/>
+          <ellipse cx="35" cy="28" rx="10" ry="6" fill="rgba(255,255,255,0.15)" transform="rotate(-25,35,28)"/>
         </svg>
         <div className="hero-badge">World Cup · International Football</div>
         <h1 className="hero-title">Match Decoded</h1>
