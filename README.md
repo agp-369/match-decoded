@@ -44,9 +44,7 @@ This project sits at the intersection of everything IBM Sports & Entertainment s
 | Frontend | URL |
 |---|---|
 | **React App (Primary)** | [match-decoded.vercel.app](https://match-decoded.vercel.app) |
-| **Mirror** | [frontend-react-mauve-nu.vercel.app](https://frontend-react-mauve-nu.vercel.app) |
 | **Streamlit (HF Spaces)** | [agp9-match-decoded.hf.space](https://agp9-match-decoded.hf.space) |
-| **Backend API (Render)** | [match-decoded-api.onrender.com](https://match-decoded-api.onrender.com/health) |
 
 ---
 
@@ -166,8 +164,6 @@ Every prediction is fully transparent. View 8 feature importance bars, Granite's
 
 ## 🌍 Social Impact — Knowledge Is a Right, Not a Privilege
 
-Pamela Jacob leads IBM's North America CSR — SkillsBuild, AI education, and using technology as a force for equity. Match Decoded was built in that same spirit.
-
 | CSR Principle | How Match Decoded Delivers |
 |---|---|
 | **Democratizing access** | Free, no login, no paywall. Works on any phone or browser — a fan in any country gets the same AI analyst as a broadcaster |
@@ -191,65 +187,6 @@ Pamela Jacob leads IBM's North America CSR — SkillsBuild, AI education, and us
 | **Feasibility & Polish** | Live at 4 URLs (React + Streamlit + Backend API + GitHub). Free tier deployment (Vercel + Render + HF Spaces). Mobile responsive. Works with or without backend. 50+ teams ready instantly. |
 | **Explainability** | Every prediction fully traceable: 8 feature importance bars, Granite natural language reasoning, model accuracy, market comparison. No black box. Designed for the non-technical fan. |
 | **Production Quality** | Stadium background, 3D gold trophy logo, ESPN-style scoreboards, Recharts radar + timeline charts, glassmorphic design system, consistent navy/gold broadcast palette. |
-
----
-
-## 🎬 Demo Video Script
-
-```
-[OPEN with stadium atmosphere — crowd roar fades in]
-
-"It's World Cup semi-final day. A billion people are watching.
-
-But here's the question IBM has been answering at Wimbledon,
-the US Open, and with ESPN Fantasy Football:
-
-How do you make the game make sense — for every fan in the stands,
-and every viewer at home?
-
-That's what Match Decoded does. For football.
-
-[OPEN APP — the gold trophy logo, stadium background, broadcast UI]
-
-I select Argentina vs Brazil — the biggest rivalry in world football.
-One click. And IBM Granite delivers a full tactical preview.
-
-Not just 'Argentina is favoured.' But WHY.
-Because of Messi's recent form. Because of head-to-head history.
-Because of tournament pressure. Granite explains it all.
-
-[Show What-If — toggle Neutral venue]
-
-What if this was at the Maracanã? I slide the venue toggle.
-The prediction shifts. Granite explains the delta —
-what changed, and why a home crowd matters in a World Cup semi.
-
-[Show Momentum Timeline]
-
-Every match has a story. The momentum timeline shows how probability
-swings over 90 minutes. Red card? Penalty? Late equalizer?
-Granite narrates each turning point.
-
-[Show Model vs Market — The Edge]
-
-Is our AI smarter than the betting market?
-The Edge compares both — and highlights where the model disagrees.
-For fans who want to go beyond the odds.
-
-[Show Decision Trace]
-
-And every prediction is transparent. Eight factors.
-Granite's reasoning. Model accuracy. No black box.
-
-Wimbledon got AI highlights. ESPN got AI fantasy insights.
-Now football fans get something neither had before:
-
-A Granite-powered analyst in their pocket.
-
-Match Decoded — powered by IBM Granite, LangChain, Docling, and IBM Bob.
-
-Every fan deserves to know WHY."
-```
 
 ---
 
