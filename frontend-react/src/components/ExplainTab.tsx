@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { cachedTeams, teamFlag, apiPost, fetchMomentum, fmtPct, generateMomentum, type FeatureImportance, type MomentumPoint } from '../api'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
-interface Props { apiAvailable: boolean; setApiAvailable: (v: boolean) => void }
+interface Props { apiAvailable: boolean; setApiAvailable: (v: boolean) => void; lang?: string }
 
 function TeamSelect({ value, onChange, exclude, teams }: { value: string; onChange: (v: string) => void; exclude: string; teams: string[] }) {
   const [open, setOpen] = useState(false)
@@ -53,7 +53,7 @@ export default function ExplainTab({ apiAvailable, setApiAvailable }: Props) {
   const fetchFeatures = (ta: string, tb: string) => {
     if (!apiAvailable || !ta || !tb || ta === tb) return
     apiPost<{ prediction: { team_a_win_prob: number; draw_prob: number; team_b_win_prob: number }; feature_importances: FeatureImportance[] }>(
-      '/explain/decision', { team_a: ta, team_b: tb, is_neutral: neutral, is_major_tournament: major }
+      '/explain/decision', { team_a: ta, team_b: tb, is_neutral: neutral, is_major_tournament: major, lang }
     ).then(r => {
       if (r) {
         setFeatures(r.feature_importances)
@@ -72,7 +72,7 @@ export default function ExplainTab({ apiAvailable, setApiAvailable }: Props) {
     if (apiAvailable) {
       const [r, mom] = await Promise.allSettled([
         apiPost<{ explanation: string; feature_importances: FeatureImportance[]; prediction: { team_a_win_prob: number; draw_prob: number; team_b_win_prob: number } }>(
-          '/explain/decision', { team_a: a, team_b: b, is_neutral: neutral, is_major_tournament: major }
+          '/explain/decision', { team_a: a, team_b: b, is_neutral: neutral, is_major_tournament: major, lang }
         ),
         fetchMomentum(a, b, neutral, major),
       ])

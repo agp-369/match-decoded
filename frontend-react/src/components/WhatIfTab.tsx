@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { cachedTeams, teamFlag, apiPost, fetchMomentum, fmtPct, generateMomentum, type Prediction, type MomentumPoint } from '../api'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
-interface Props { apiAvailable: boolean; setApiAvailable: (v: boolean) => void }
+interface Props { apiAvailable: boolean; setApiAvailable: (v: boolean) => void; lang?: string }
 
 function TeamSelect({ value, onChange, exclude, teams }: { value: string; onChange: (v: string) => void; exclude: string; teams: string[] }) {
   const [open, setOpen] = useState(false)
@@ -80,7 +80,7 @@ export default function WhatIfTab({ apiAvailable, setApiAvailable }: Props) {
     if (apiAvailable) {
       const [narrRes, momRes] = await Promise.allSettled([
         apiPost<{ narrative: string }>('/explain/momentum', {
-          team_a: a, team_b: b, prob_a: p.team_a_win_prob, prob_b: p.team_b_win_prob,
+          team_a: a, team_b: b, prob_a: p.team_a_win_prob, prob_b: p.team_b_win_prob, lang,
         }),
         fetchMomentum(a, b, neutral, major),
       ])

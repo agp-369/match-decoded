@@ -1,21 +1,39 @@
 """
 LangChain prompt templates for Match Decoded — IBM Granite integration
+Multilingual: supports EN, ES, FR, PT, DE
 """
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.messages import SystemMessage, HumanMessage
 
-SYSTEM_PROMPT = """You are Match Decoded, a football AI explainer powered by IBM Granite. Your role is to explain soccer matches to fans in clear, engaging language.
+LANG_NAMES = {"en": "English", "es": "Spanish", "fr": "French", "pt": "Portuguese", "de": "German"}
+LANG_INSTRUCTIONS = {
+    "en": "Write in English.",
+    "es": "Escribe en español.",
+    "fr": "Écrivez en français.",
+    "pt": "Escreva em português.",
+    "de": "Schreiben Sie auf Deutsch.",
+}
+
+def _sys(lang: str = "en") -> str:
+    li = LANG_INSTRUCTIONS.get(lang, LANG_INSTRUCTIONS["en"])
+    return f"""You are Match Decoded, a football AI explainer powered by IBM Granite. Your role is to explain soccer matches to fans in clear, engaging language.
 
 Rules:
-- Always start with "IBM Granite — "
-- Explain WHY, not just WHAT
+- Explain WHY, not just WHAT — focus on causes, context, and meaning
 - Be specific — reference team names, stats, and probabilities
-- Write for a fan audience (plain English, not technical jargon)
-- Keep responses under 150 words
-- Never claim to predict the future with certainty — always note probabilities"""
+- Write for a fan audience (plain language, no technical jargon)
+- Keep responses under 150 words unless asked for more detail
+- Never claim to predict the future with certainty — always note probabilities
+- {li}"""
+
+def make_prompt(template: ChatPromptTemplate, lang: str = "en") -> ChatPromptTemplate:
+    return ChatPromptTemplate.from_messages([
+        SystemMessage(content=_sys(lang)),
+        *template.messages[1:],
+    ])
 
 PREVIEW_TEMPLATE = ChatPromptTemplate.from_messages([
-    SystemMessage(content=SYSTEM_PROMPT),
+    SystemMessage(content=_sys()),
     HumanMessage(content=(
         "Preview the match {team_a} vs {team_b}. "
         "{team_a} has {prob_a_pct}% win probability, draw {prob_draw_pct}%, "
@@ -24,14 +42,13 @@ PREVIEW_TEMPLATE = ChatPromptTemplate.from_messages([
         "avg goals {goal_avg_a}, recent form {form_a}. "
         "{team_b} stats: win rate {winrate_b}, "
         "avg goals {goal_avg_b}, recent form {form_b}. "
-        "{venue}. "
-        "{tournament}. "
+        "{venue}. {tournament}. "
         "Write a tactical preview explaining WHY one team has the edge."
     )),
 ])
 
 EXPLAIN_TEMPLATE = ChatPromptTemplate.from_messages([
-    SystemMessage(content=SYSTEM_PROMPT),
+    SystemMessage(content=_sys()),
     HumanMessage(content=(
         "A match prediction gives {prob_a_pct}% home win, "
         "{prob_draw_pct}% draw, {prob_b_pct}% away win. "
@@ -41,7 +58,7 @@ EXPLAIN_TEMPLATE = ChatPromptTemplate.from_messages([
 ])
 
 MOMENTUM_TEMPLATE = ChatPromptTemplate.from_messages([
-    SystemMessage(content=SYSTEM_PROMPT),
+    SystemMessage(content=_sys()),
     HumanMessage(content=(
         "In a match between {team_a} and {team_b}, the current prediction "
         "gives {team_a} {prob_a_pct}% and {team_b} {prob_b_pct}%. "
@@ -50,18 +67,58 @@ MOMENTUM_TEMPLATE = ChatPromptTemplate.from_messages([
     )),
 ])
 
-DOCLING_ANALYSIS_TEMPLATE = ChatPromptTemplate.from_messages([
-    SystemMessage(content=SYSTEM_PROMPT),
+TACTICAL_TEMPLATE = ChatPromptTemplate.from_messages([
+    SystemMessage(content=_sys()),
     HumanMessage(content=(
-        "Analyze the following match report from a football match:\n\n"
-        "{report_text}\n\n"
-        "Summarize the key moments, tactical insights, and what decided the match. "
-        "Write for a football fan who wants to understand WHY the match unfolded this way."
+        "Analyze the tactical matchup between {team_a} and {team_b}. "
+        "{team_a} has {prob_a_pct}% win probability, draw {prob_draw_pct}%, "
+        "{team_b} has {prob_b_pct}%. "
+        "{team_a} recent form: {form_a_pct}%, {team_b} recent form: {form_b_pct}%. "
+        "{team_a} avg goals: {goal_avg_a}, {team_b} avg goals: {goal_avg_b}. "
+        "This is a {venue_desc} in a {tournament_desc}. "
+        "Answer these questions:\n"
+        "1. WHY does the prediction favor one team?\n"
+        "2. WHAT tactical change could flip the match?\n"
+        "3. HOW might the match unfold tactically?\n"
+        "Write for a football fan who wants to understand the tactical story."
+    )),
+])
+
+VAR_TEMPLATE = ChatPromptTemplate.from_messages([
+    SystemMessage(content=_sys()),
+    HumanMessage(content=(
+        "A football fan is asking about a VAR (Video Assistant Referee) decision "
+        "in a match between {team_a} and {team_b}. "
+        "The scenario involves: {scenario}. "
+        "Explain the VAR decision process in plain language:\n"
+        "1. What does the law say?\n"
+        "2. Why is this decision controversial or clear?\n"
+        "3. How does VAR check this?\n"
+        "Be educational — help fans understand WHY referees make these calls."
+    )),
+])
+
+STORY_TEMPLATE = ChatPromptTemplate.from_messages([
+    SystemMessage(content=_sys()),
+    HumanMessage(content=(
+        "Tell the story of a match between {team_a} and {team_b} "
+        "as it might unfold based on their real statistics.\n\n"
+        "{team_a} stats: win rate {winrate_a}, avg goals {goal_avg_a}, "
+        "recent form {form_a_pct}%, {matches_a} matches played.\n"
+        "{team_b} stats: win rate {winrate_b}, avg goals {goal_avg_b}, "
+        "recent form {form_b_pct}%, {matches_b} matches played.\n\n"
+        "Prediction: {team_a} {prob_a_pct}%, Draw {prob_draw_pct}%, {team_b} {prob_b_pct}%.\n"
+        "Venue: {venue_desc}. Tournament: {tournament_desc}.\n\n"
+        "Write a 3-paragraph match story:\n"
+        "1. First half — how does it start? Which team dominates?\n"
+        "2. Key moment — what changes the match?\n"
+        "3. Final outcome — how does it end?\n"
+        "Focus on WHY things happen tactically, not just what happens."
     )),
 ])
 
 LEGENDS_TEMPLATE = ChatPromptTemplate.from_messages([
-    SystemMessage(content=SYSTEM_PROMPT),
+    SystemMessage(content=_sys()),
     HumanMessage(content=(
         "Compare two football teams from different eras: {team_a} ({era_a}) "
         "vs {team_b} ({era_b}). "
@@ -71,5 +128,15 @@ LEGENDS_TEMPLATE = ChatPromptTemplate.from_messages([
         "matches played {matches_b}. "
         "Explain who had the stronger legacy and WHY. "
         "Write passionately for football fans who love historical debates."
+    )),
+])
+
+TEACH_TEMPLATE = ChatPromptTemplate.from_messages([
+    SystemMessage(content=_sys()),
+    HumanMessage(content=(
+        "A football fan asks: '{question}'. "
+        "Answer in plain language for a beginner audience. "
+        "Explain the concept clearly with examples from real matches "
+        "or World Cup history. Keep it under 150 words."
     )),
 ])

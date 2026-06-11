@@ -1,6 +1,7 @@
 """
 IBM Granite integration — Match Decoded
 Primary: IBM watsonx.ai  |  Fallback: HuggingFace Inference API (same Granite model)
+Multilingual: EN, ES, FR, PT, DE
 """
 import os
 import json
@@ -9,8 +10,10 @@ import requests
 from typing import Optional
 
 from backend.langchain_prompts import (
-    PREVIEW_TEMPLATE, EXPLAIN_TEMPLATE, MOMENTUM_TEMPLATE,
-    DOCLING_ANALYSIS_TEMPLATE, LEGENDS_TEMPLATE,
+    PREVIEW_TEMPLATE, EXPLAIN_TEMPLATE, MOMENTUM_TEMPLATE, TACTICAL_TEMPLATE,
+    VAR_TEMPLATE, STORY_TEMPLATE, DOCLING_ANALYSIS_TEMPLATE, LEGENDS_TEMPLATE,
+    TEACH_TEMPLATE,
+    make_prompt, LANG_NAMES,
 )
 
 logger = logging.getLogger(__name__)
@@ -115,11 +118,19 @@ def query_granite(prompt: str, max_tokens: int = 300) -> str:
     raise RuntimeError(msg)
 
 
+def _render(prompt_template, lang: str = "en", **kwargs) -> str:
+    """Render a prompt template with language support and query Granite."""
+    tpl = make_prompt(prompt_template, lang) if lang != "en" else prompt_template
+    msg = tpl.format_prompt(**kwargs)
+    return query_granite(msg.to_string())
+
+
 def generate_preview(team_a: str, team_b: str, prob_a: float, prob_draw: float, prob_b: float,
-                      stats_a: dict, stats_b: dict, neutral: bool, major: bool) -> str:
+                      stats_a: dict, stats_b: dict, neutral: bool, major: bool,
+                      lang: str = "en") -> str:
     venue = "Neutral venue" if neutral else f"{team_a} is home"
     tournament = "Major tournament match" if major else "Friendly match"
-    prompt = PREVIEW_TEMPLATE.format(
+    return _render(PREVIEW_TEMPLATE, lang,
         team_a=team_a, team_b=team_b,
         prob_a_pct=f"{prob_a*100:.1f}", prob_draw_pct=f"{prob_draw*100:.1f}",
         prob_b_pct=f"{prob_b*100:.1f}",
@@ -129,39 +140,76 @@ def generate_preview(team_a: str, team_b: str, prob_a: float, prob_draw: float, 
         form_b=f"{stats_b['form']:.1%}",
         venue=venue, tournament=tournament,
     )
-    return query_granite(prompt)
 
 
 def generate_explain(prob_a: float, prob_draw: float, prob_b: float,
-                      stats_a: dict, stats_b: dict, feature_importances: list) -> str:
-    prompt = EXPLAIN_TEMPLATE.format(
+                      stats_a: dict, stats_b: dict, feature_importances: list,
+                      lang: str = "en") -> str:
+    return _render(EXPLAIN_TEMPLATE, lang,
         prob_a_pct=f"{prob_a*100:.1f}", prob_draw_pct=f"{prob_draw*100:.1f}",
         prob_b_pct=f"{prob_b*100:.1f}",
         features=", ".join(feature_importances) if feature_importances else "historical win rates, goal averages, recent form",
     )
-    return query_granite(prompt)
 
 
-def generate_momentum(team_a: str, team_b: str, prob_a: float, prob_b: float) -> str:
-    prompt = MOMENTUM_TEMPLATE.format(
+def generate_momentum(team_a: str, team_b: str, prob_a: float, prob_b: float,
+                       lang: str = "en") -> str:
+    return _render(MOMENTUM_TEMPLATE, lang,
         team_a=team_a, team_b=team_b,
         prob_a_pct=f"{prob_a*100:.1f}", prob_b_pct=f"{prob_b*100:.1f}",
     )
-    return query_granite(prompt)
 
 
-def generate_docling_analysis(report_text: str) -> str:
-    prompt = DOCLING_ANALYSIS_TEMPLATE.format(report_text=report_text[:3000])
-    return query_granite(prompt, max_tokens=400)
+def generate_tactical(team_a: str, team_b: str, prob_a: float, prob_draw: float, prob_b: float,
+                       stats_a: dict, stats_b: dict, neutral: bool, major: bool,
+                       lang: str = "en") -> str:
+    return _render(TACTICAL_TEMPLATE, lang,
+        team_a=team_a, team_b=team_b,
+        prob_a_pct=f"{prob_a*100:.1f}", prob_draw_pct=f"{prob_draw*100:.1f}",
+        prob_b_pct=f"{prob_b*100:.1f}",
+        form_a_pct=f"{stats_a['form']*100:.0f}", form_b_pct=f"{stats_b['form']*100:.0f}",
+        goal_avg_a=f"{stats_a['goal_avg']:.2f}", goal_avg_b=f"{stats_b['goal_avg']:.2f}",
+        venue_desc="neutral venue" if neutral else f"{team_a} home game",
+        tournament_desc="major tournament match" if major else "friendly match",
+    )
+
+
+def generate_var_explanation(team_a: str, team_b: str, scenario: str, lang: str = "en") -> str:
+    return _render(VAR_TEMPLATE, lang,
+        team_a=team_a, team_b=team_b, scenario=scenario,
+    )
+
+
+def generate_story(team_a: str, team_b: str, prob_a: float, prob_draw: float, prob_b: float,
+                    stats_a: dict, stats_b: dict, neutral: bool, major: bool,
+                    lang: str = "en") -> str:
+    return _render(STORY_TEMPLATE, lang,
+        team_a=team_a, team_b=team_b,
+        prob_a_pct=f"{prob_a*100:.1f}", prob_draw_pct=f"{prob_draw*100:.1f}",
+        prob_b_pct=f"{prob_b*100:.1f}",
+        winrate_a=f"{stats_a['winrate']:.1%}", goal_avg_a=f"{stats_a['goal_avg']:.2f}",
+        form_a_pct=f"{stats_a['form']*100:.0f}", matches_a=int(stats_a['matches']),
+        winrate_b=f"{stats_b['winrate']:.1%}", goal_avg_b=f"{stats_b['goal_avg']:.2f}",
+        form_b_pct=f"{stats_b['form']*100:.0f}", matches_b=int(stats_b['matches']),
+        venue_desc="neutral venue" if neutral else f"{team_a} home",
+        tournament_desc="major tournament" if major else "friendly",
+    )
+
+
+def generate_docling_analysis(report_text: str, lang: str = "en") -> str:
+    return _render(DOCLING_ANALYSIS_TEMPLATE, lang, report_text=report_text[:3000])
 
 
 def generate_legends(team_a: str, team_b: str, era_a: str, era_b: str,
-                      stats_a: dict, stats_b: dict) -> str:
-    prompt = LEGENDS_TEMPLATE.format(
+                      stats_a: dict, stats_b: dict, lang: str = "en") -> str:
+    return _render(LEGENDS_TEMPLATE, lang,
         team_a=team_a, team_b=team_b, era_a=era_a, era_b=era_b,
         winrate_a=f"{stats_a['winrate']:.1%}", goal_avg_a=f"{stats_a['goal_avg']:.2f}",
         matches_a=stats_a['matches'],
         winrate_b=f"{stats_b['winrate']:.1%}", goal_avg_b=f"{stats_b['goal_avg']:.2f}",
         matches_b=stats_b['matches'],
     )
-    return query_granite(prompt)
+
+
+def generate_teach(question: str, lang: str = "en") -> str:
+    return _render(TEACH_TEMPLATE, lang, question=question)

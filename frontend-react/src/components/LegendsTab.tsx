@@ -5,7 +5,7 @@ import {
 } from 'recharts'
 import { cachedTeams, teamFlag, apiPost, type TeamDetail } from '../api'
 
-interface Props { apiAvailable: boolean; setApiAvailable: (v: boolean) => void }
+interface Props { apiAvailable: boolean; setApiAvailable: (v: boolean) => void; lang?: string }
 
 function TeamSelect({ value, onChange, exclude, teams }: { value: string; onChange: (v: string) => void; exclude: string; teams: string[] }) {
   const [open, setOpen] = useState(false)
@@ -72,7 +72,7 @@ export default function LegendsTab({ apiAvailable, setApiAvailable }: Props) {
     setLoading(true)
     setNarrative('')
     if (apiAvailable) {
-      const r = await apiPost<{ narrative: string }>('/explain/legends', { team_a: a, team_b: b, era_a: 'Modern era', era_b: 'Modern era' })
+      const r = await apiPost<{ narrative: string }>('/explain/legends', { team_a: a, team_b: b, era_a: 'Modern era', era_b: 'Modern era', lang })
       if (r?.narrative) setNarrative(r.narrative)
     }
     setLoading(false)

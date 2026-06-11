@@ -162,6 +162,14 @@ export async function fetchWorldCupGroups(): Promise<Record<string, {
   } catch { return null; }
 }
 
+export const LANGUAGES = [
+  { code: 'en', name: 'English' },
+  { code: 'es', name: 'Español' },
+  { code: 'fr', name: 'Français' },
+  { code: 'pt', name: 'Português' },
+  { code: 'de', name: 'Deutsch' },
+]
+
 export function predictLocal(a: string, b: string, neutral: boolean, major: boolean): Prediction {
   const sa = FALLBACK_TEAM_STATS[a] || { winrate: 0.5, goal_avg: 1.5, form: 0.5, matches: 500 };
   const sb = FALLBACK_TEAM_STATS[b] || { winrate: 0.5, goal_avg: 1.5, form: 0.5, matches: 500 };

@@ -10,7 +10,7 @@ const QUICK_MATCHUPS: [string, string][] = [
   ['England', 'France'], ['Croatia', 'Brazil'],
 ]
 
-interface Props { apiAvailable: boolean; setApiAvailable: (v: boolean) => void; wcMode: boolean }
+interface Props { apiAvailable: boolean; setApiAvailable: (v: boolean) => void; wcMode: boolean; lang?: string }
 
 function TeamSelect({ value, onChange, exclude, teams }: { value: string; onChange: (v: string) => void; exclude: string; teams: string[] }) {
   const [open, setOpen] = useState(false)
@@ -85,7 +85,7 @@ export default function PreMatchTab({ apiAvailable, setApiAvailable, wcMode }: P
     if (apiAvailable) {
       const [predRes, narrRes, momRes] = await Promise.allSettled([
         apiPost<Prediction>('/predict', { team_a: a, team_b: b, is_neutral: neutral, is_major_tournament: major }),
-        apiPost<{ narrative: string }>('/explain/preview', { team_a: a, team_b: b, is_neutral: neutral, is_major_tournament: major }),
+        apiPost<{ narrative: string }>('/explain/preview', { team_a: a, team_b: b, is_neutral: neutral, is_major_tournament: major, lang }),
         fetchMomentum(a, b, neutral, major),
       ])
       if (predRes.status === 'fulfilled' && predRes.value) setPred(predRes.value)

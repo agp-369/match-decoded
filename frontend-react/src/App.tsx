@@ -6,18 +6,34 @@ import WhatIfTab from './components/WhatIfTab'
 import LegendsTab from './components/LegendsTab'
 import ExplainTab from './components/ExplainTab'
 import DoclingTab from './components/DoclingTab'
+import TacticalAnalysisTab from './components/TacticalAnalysisTab'
+import VARExplainedTab from './components/VARExplainedTab'
+import MatchStoryTab from './components/MatchStoryTab'
+import TeachMeTab from './components/TeachMeTab'
 
-type Tab = 'prematch' | 'whatif' | 'legends' | 'explain' | 'docling'
-const TABS: { key: Tab; label: string; icon: string }[] = [
-  { key: 'prematch', label: 'Pre-Match Preview', icon: '📊' },
-  { key: 'whatif', label: 'What-If Simulator', icon: '🔄' },
-  { key: 'legends', label: 'Legends Matchup', icon: '🏆' },
-  { key: 'explain', label: 'Decision Trace', icon: '🔍' },
-  { key: 'docling', label: 'Docling Analysis', icon: '📄' },
+type Tab = 'prematch' | 'whatif' | 'legends' | 'explain' | 'docling' | 'tactical' | 'var' | 'story' | 'teach'
+const TABS: { key: Tab; label: string; icon: string; desc: string }[] = [
+  { key: 'prematch', label: 'Pre-Match Preview', icon: '📊', desc: 'Prediction + Narrative' },
+  { key: 'tactical', label: 'Tactical Analysis', icon: '🧠', desc: 'WHY each side wins' },
+  { key: 'var', label: 'VAR Explained', icon: '⚖️', desc: 'WHY decisions are made' },
+  { key: 'story', label: 'Match Story', icon: '📖', desc: 'HOW the match unfolds' },
+  { key: 'whatif', label: 'What-If Simulator', icon: '🔄', desc: 'Change the narrative' },
+  { key: 'legends', label: 'Legends Matchup', icon: '🏆', desc: 'Cross-era debate' },
+  { key: 'explain', label: 'Decision Trace', icon: '🔍', desc: 'Model transparency' },
+  { key: 'teach', label: 'Teach Me', icon: '📚', desc: 'Learn the game' },
+  { key: 'docling', label: 'Docling Analysis', icon: '📄', desc: 'Report parsing' },
+]
+
+const LANG_OPTIONS = [
+  { code: 'en', label: 'EN', name: 'English' },
+  { code: 'es', label: 'ES', name: 'Español' },
+  { code: 'fr', label: 'FR', name: 'Français' },
+  { code: 'pt', label: 'PT', name: 'Português' },
+  { code: 'de', label: 'DE', name: 'Deutsch' },
 ]
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>('prematch')
+  const [tab, setTab] = useState<Tab>('tactical')
   const [apiAvailable, setApiAvailable] = useState<boolean | null>(null)
   const [healthData, setHealthData] = useState<{
     ai_available: boolean; active_provider: string; teams_available: number; ibm_technologies: string[];
@@ -25,6 +41,8 @@ export default function App() {
   const [wcMode, setWcMode] = useState(false)
   const [teamCount, setTeamCount] = useState(48)
   const [totalMatches, setTotalMatches] = useState(31161)
+  const [lang, setLang] = useState('en')
+  const [langOpen, setLangOpen] = useState(false)
 
   useEffect(() => {
     getAllTeams().then(teams => setTeamCount(teams.length))
@@ -51,7 +69,7 @@ export default function App() {
   return (
     <div className="container">
       <AnimatePresence mode="wait">
-        <motion.div key={tab} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.25 }}>
+        <motion.div key={tab + lang} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.25 }}>
           <section className="hero">
             <svg className="hero-logo" viewBox="0 0 100 100" width="56" height="56" fill="none" xmlns="http://www.w3.org/2000/svg">
               <defs>
@@ -72,11 +90,11 @@ export default function App() {
               <line x1="32.9" y1="42.4" x2="15" y2="22" stroke="#92400e" strokeWidth="0.9" strokeLinecap="round"/>
               <ellipse cx="35" cy="28" rx="10" ry="6" fill="rgba(255,255,255,0.15)" transform="rotate(-25,35,28)"/>
             </svg>
-            <div className="hero-badge">{wcMode ? '⚽ World Cup 2026 · AI Match Analysis' : '🌍 International Football · AI Match Analysis'}</div>
+            <div className="hero-badge">{wcMode ? '⚽ World Cup 2026 · AI Match Explainability' : '🌍 International Football · AI Match Explainability'}</div>
             <h1 className="hero-title">Match Decoded</h1>
             <p className="hero-subtitle">
               <strong>Every fan deserves to know why.</strong><br/>
-              <span style={{fontSize:'0.8em', fontWeight:400, opacity:0.8}}>AI-powered match explainability — IBM Granite · LangChain · Docling</span>
+              <span style={{fontSize:'0.8em', fontWeight:400, opacity:0.8}}>AI-powered match explainability — IBM Granite · LangChain · Docling · IBM Bob</span>
             </p>
             <div className="tech-row">
               <span className={`tech-badge ${healthData?.active_provider === 'watsonx.ai' ? 'active' : ''}`}>
@@ -122,11 +140,29 @@ export default function App() {
               <span className="ibm-tech">LangChain</span>
               <span className="ibm-tech-sep">·</span>
               <span className="ibm-tech">Docling</span>
+              <span className="ibm-tech-sep">·</span>
+              <span className="ibm-tech">IBM Bob</span>
             </div>
           </div>
 
           <div className="gold-divider">
             {wcMode ? '⚽ World Cup 2026 Match Analysis' : '🌍 International Match Analysis'}
+            <span style={{ flex: 1 }} />
+            <div className="lang-selector" style={{ position: 'relative', display: 'inline-block' }}>
+              <button className="lang-btn" onClick={() => setLangOpen(!langOpen)}>
+                🌐 {LANG_OPTIONS.find(l => l.code === lang)?.label || 'EN'}
+              </button>
+              {langOpen && (
+                <div className="lang-dropdown" onMouseLeave={() => setLangOpen(false)}>
+                  {LANG_OPTIONS.map(l => (
+                    <div key={l.code} className={`lang-option${lang === l.code ? ' active' : ''}`}
+                      onClick={() => { setLang(l.code); setLangOpen(false) }}>
+                      {l.label} — {l.name}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
             <button className="wc-toggle" onClick={() => setWcMode(!wcMode)}>
               {wcMode ? '🌍 All Teams' : '⚽ World Cup 2026'}
             </button>
@@ -146,15 +182,19 @@ export default function App() {
             ))}
           </div>
 
-          {tab === 'prematch' && <PreMatchTab apiAvailable={isOnline} setApiAvailable={setApiAvailable} wcMode={wcMode} />}
-          {tab === 'whatif' && <WhatIfTab apiAvailable={isOnline} setApiAvailable={setApiAvailable} />}
-          {tab === 'legends' && <LegendsTab apiAvailable={isOnline} setApiAvailable={setApiAvailable} />}
-          {tab === 'explain' && <ExplainTab apiAvailable={isOnline} setApiAvailable={setApiAvailable} />}
+          {tab === 'prematch' && <PreMatchTab apiAvailable={isOnline} setApiAvailable={setApiAvailable} wcMode={wcMode} lang={lang} />}
+          {tab === 'tactical' && <TacticalAnalysisTab apiAvailable={isOnline} setApiAvailable={setApiAvailable} lang={lang} />}
+          {tab === 'var' && <VARExplainedTab apiAvailable={isOnline} setApiAvailable={setApiAvailable} lang={lang} />}
+          {tab === 'story' && <MatchStoryTab apiAvailable={isOnline} setApiAvailable={setApiAvailable} lang={lang} />}
+          {tab === 'whatif' && <WhatIfTab apiAvailable={isOnline} setApiAvailable={setApiAvailable} lang={lang} />}
+          {tab === 'legends' && <LegendsTab apiAvailable={isOnline} setApiAvailable={setApiAvailable} lang={lang} />}
+          {tab === 'explain' && <ExplainTab apiAvailable={isOnline} setApiAvailable={setApiAvailable} lang={lang} />}
+          {tab === 'teach' && <TeachMeTab apiAvailable={isOnline} setApiAvailable={setApiAvailable} lang={lang} />}
           {tab === 'docling' && <DoclingTab />}
 
           <footer className="footer">
             Match Decoded <span className="dot">·</span> IBM AI Builders Challenge
-            <span className="dot">·</span> Built with IBM Granite 3-8B
+            <span className="dot">·</span> Built with IBM Granite 3-8B + IBM Bob
             <span className="dot">·</span> <a href="https://github.com/agp-369/match-decoded" target="_blank" rel="noopener">GitHub</a>
           </footer>
         </motion.div>

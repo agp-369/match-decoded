@@ -43,15 +43,24 @@ The average fan watches 90 minutes of football with zero insight into *why* a te
 
 ---
 
-## 🧠 How It Works: 5 Analytical Tabs
+## 🧠 How It Works: 9 Analytical Tabs
 
-| Tab | What It Does | Who It Serves |
-|-----|------------|---------------|
-| **📊 Pre-Match Preview** | Real XGBoost prediction + Granite narrative explaining *why* one team is favored | Broadcasters, fans, bettors |
-| **🔄 What-If Simulator** | Adjust team form, venue, tournament type — watch the prediction shift in real-time | Coaches, analysts, journalists |
-| **🏆 Legends Matchup** | Cross-era team comparison across 5 dimensions with Granite storytelling | Content creators, historians |
-| **🔍 Decision Trace** | 12 feature importances shown + Granite explains the model's reasoning | **Judges, regulators, transparency advocates** |
-| **📄 Docling Analysis** | Upload PDF match reports — IBM Docling parses, Granite analyzes | Media archives, match officials |
+### "Why" over "What" — each tab answers a different football question
+
+| Tab | Question It Answers | Who It Serves |
+|-----|-------------------|---------------|
+| **🧠 Tactical Analysis** | **WHY** does one team have the edge? **WHAT** tactical change could flip it? | Coaches, pundits, tactical fans |
+| **📊 Pre-Match Preview** | **HOW** will the match play out? What does the data say? | Broadcasters, fans, bettors |
+| **⚖️ VAR Explained** | **WHY** was that decision made? Was it right or controversial? | Fans, media, new viewers |
+| **📖 Match Story** | **HOW** does the match come alive? A 3-act narrative of the game | Storytellers, content creators |
+| **🔄 What-If Simulator** | **WHAT IF** form, venue, or tournament changes the outcome? | Coaches, analysts, journalists |
+| **🏆 Legends Matchup** | **WHO** had the stronger legacy across eras? | Historians, debaters |
+| **🔍 Decision Trace** | **HOW** does the model decide? Full feature transparency | **Judges, regulators, transparency advocates** |
+| **📚 Teach Me** | **WHAT** does this football term mean? Learn the game | New fans, casual viewers |
+| **📄 Docling Analysis** | **WHAT** does this match report reveal? AI document analysis | Media archives, match officials |
+
+### 🌐 Multilingual
+AI narratives in **5 languages**: English, Español, Français, Português, Deutsch — selectable from the global nav.
 
 ### 🏆 World Cup 2026 Mode
 Toggle World Cup mode to filter matchups by tournament-qualified teams and get World Cup-specific analysis — built for the June "AI Inside the Match" theme.
@@ -112,9 +121,9 @@ For **Pamela Jacob** (CSR, Sports & Entertainment) and **Elizabeth O'Brien** (Sp
 | Criterion | Score Target | How We Deliver |
 |-----------|-------------|----------------|
 | **Technical Execution** | 5/5 | FastAPI + React + XGBoost + dual AI provider + CI/CD + 22 tests |
-| **Innovation** | 5/5 | Explainable match AI + what-if simulator + cross-era legends + Docling integration |
-| **Challenge Fit** | 5/5 | "AI Inside the Match" — pre-match, during (momentum), post-match (Docling) |
-| **Implementation & Feasibility** | 5/5 | Deployed on Render + Vercel, real data, 66.6% accuracy, 224 teams |
+| **Innovation** | 5/5 | Tactical analysis, VAR explainer, match story, "teach me" assistant, what-if simulator, cross-era legends, Docling |
+| **Challenge Fit** | 5/5 | Answers "WHY did momentum shift?", "WHY did a tactical change succeed/fail?", "WHY was a decision controversial?" — no prediction-only features |
+| **Implementation & Feasibility** | 5/5 | Deployed on Render + Vercel, real data, 66.6% accuracy, 224 teams, multilingual |
 
 ---
 
@@ -166,15 +175,18 @@ python -m pytest tests/ -v     # 22 tests
 ## 🎬 Demo Video (3 min max)
 
 **Script Outline:**
-1. **0:00–0:15** — Open with 66.6% accuracy badge, show 31K+ matches analyzed
-2. **0:15–0:45** — Pre-Match Preview. Select Brazil vs Argentina. Click "Analyze with Granite." Show AI narrative appear.
-3. **0:45–1:00** — Decision Trace. Show 12 feature importances animate in. Click "Explain with Granite." Show the AI explanation.
-4. **1:00–1:20** — What-If Simulator. Drag form sliders. Show probability shifting in real-time. Click "Analyze What-If."
-5. **1:20–1:35** — World Cup mode toggle. Show filtered matchups.
-6. **1:35–1:50** — Legends Matchup. Show radar chart. Run comparison.
-7. **1:50–2:20** — IBM Tech Status Bar. Show watsonx.ai active. Mention dual provider strategy. Show 22 tests passing in terminal.
-8. **2:20–2:45** — CI/CD pipeline. Show GitHub Actions passing. Deployment to Render/Vercel.
-9. **2:45–3:00** — Close with "Every fan deserves to know why." Show GitHub stars. Call to action.
+1. **0:00–0:10** — Open with "Every fan deserves to know why." Show 31K+ matches, 224 teams.
+2. **0:10–0:30** — 🧠 **Tactical Analysis** (first tab!). Select Brazil vs Argentina. Click "Analyze Tactics with Granite." Granite answers: WHY Brazil has the edge, WHAT tactical change could flip it.
+3. **0:30–0:45** — ⚖️ **VAR Explained**. Pick a controversial scenario. Granite explains: what the law says, why it's controversial, how VAR checks it.
+4. **0:45–1:00** — 📖 **Match Story**. Click "Tell the Match Story." Granite writes a 3-act narrative — first half, key moment, final outcome.
+5. **1:00–1:15** — 🌐 **Multilingual**. Change language selector to ES/FR/PT/DE. Same AI narrative, different language. Shows global scalability.
+6. **1:15–1:30** — 📊 **Pre-Match Preview**. Show prediction + momentum timeline + Granite narrative.
+7. **1:30–1:45** — 📚 **Teach Me**. Show FAQ grid. Click a question. Granite explains football concepts for new fans.
+8. **1:45–2:00** — 🔍 **Decision Trace**. 12 feature importances + AI explains the model's reasoning.
+9. **2:00–2:20** — 🔄 **What-If Simulator**. Drag form sliders. Show probability shifting.
+10. **2:20–2:35** — 🏆 **Legends Matchup**. Radar chart + cross-era comparison.
+11. **2:35–2:50** — IBM Tech Status Bar + CI/CD. Show watsonx.ai active, 22 tests passing, GitHub Actions.
+12. **2:50–3:00** — Close: "Match Decoded — built with IBM Granite 3-8B, LangChain, Docling, and IBM Bob. Every fan deserves to know why."
 
 ---
 
@@ -183,7 +195,7 @@ python -m pytest tests/ -v     # 22 tests
 | Technology | Purpose |
 |------------|---------|
 | **IBM Granite 3-8B** (watsonx.ai + 🤗 API) | AI match explainability — dual-provider, live, no hardcoded text |
-| **LangChain** | Structured prompt engineering (5 templates) |
+| **LangChain** | Structured prompt engineering (8 templates: preview, explain, momentum, tactical, VAR, story, legends, teach) |
 | **IBM Docling** | PDF match report parsing |
 | **IBM Bob** | AI code assistant |
 | **XGBoost + scikit-learn** | Ensemble prediction model (66.6%) |

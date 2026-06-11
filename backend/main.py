@@ -1,6 +1,7 @@
 """
 FastAPI backend — Match Decoded API
 IBM Technologies: Granite (watsonx.ai) + LangChain + Docling + IBM Bob
+Multilingual: EN, ES, FR, PT, DE
 """
 import os
 import sys
@@ -19,9 +20,10 @@ import numpy as np
 
 from model import predictor
 from granite import (
-    generate_preview, generate_explain, generate_momentum,
-    generate_docling_analysis, generate_legends,
-    AI_AVAILABLE, WATSONX_AVAILABLE, HF_AVAILABLE,
+    generate_preview, generate_explain, generate_momentum, generate_tactical,
+    generate_var_explanation, generate_story,
+    generate_docling_analysis, generate_legends, generate_teach,
+    AI_AVAILABLE, WATSONX_AVAILABLE, HF_AVAILABLE, LANG_NAMES,
 )
 from docling_parser import extract_match_details
 
@@ -43,7 +45,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Match Decoded API",
     description="AI-powered football match explainability — IBM Granite (watsonx.ai) + LangChain + Docling",
-    version="3.0.0",
+    version="3.1.0",
     lifespan=lifespan,
 )
 
@@ -68,6 +70,7 @@ class ExplainRequest(BaseModel):
     team_b: str
     is_neutral: bool = True
     is_major_tournament: bool = True
+    lang: str = "en"
 
 
 class LegendsRequest(BaseModel):
@@ -75,6 +78,19 @@ class LegendsRequest(BaseModel):
     team_b: str
     era_a: str = "Modern era"
     era_b: str = "Modern era"
+    lang: str = "en"
+
+
+class VARRequest(BaseModel):
+    team_a: str = "Brazil"
+    team_b: str = "Argentina"
+    scenario: str = "A goal is disallowed for offside after a 3-minute VAR review"
+    lang: str = "en"
+
+
+def _ensure_ai():
+    if not AI_AVAILABLE:
+        raise HTTPException(status_code=503, detail="AI narrative unavailable. Set WATSONX_API_KEY+WATSONX_PROJECT_ID (IBM watsonx.ai) or HF_TOKEN (HuggingFace, free) to enable.")
 
 
 @app.get("/health")
@@ -87,6 +103,7 @@ def health():
         "active_provider": "watsonx.ai" if WATSONX_AVAILABLE else "HuggingFace Inference API" if HF_AVAILABLE else "none",
         "data_source": "31,161 real international matches (1990-2026)",
         "model_accuracy": "66.6% (XGBoost ensemble, 3-class)",
+        "languages_supported": list(LANG_NAMES.keys()),
         "ibm_technologies": [
             "IBM Granite 3-8B (watsonx.ai + HuggingFace Inference API)",
             "LangChain (prompt templates)",
@@ -171,15 +188,13 @@ def preview_match(req: ExplainRequest):
         result = predictor.predict(req.team_a, req.team_b, req.is_neutral, req.is_major_tournament)
     except (ValueError, RuntimeError) as e:
         raise HTTPException(status_code=400, detail=str(e))
-
-    if not AI_AVAILABLE:
-        raise HTTPException(status_code=503, detail="AI narrative unavailable. Set WATSONX_API_KEY+WATSONX_PROJECT_ID (IBM watsonx.ai) or HF_TOKEN (HuggingFace, free) to enable.")
-
+    _ensure_ai()
     narrative = generate_preview(
         result["team_a"], result["team_b"],
         result["team_a_win_prob"], result["draw_prob"], result["team_b_win_prob"],
         result["stats_a"], result["stats_b"],
         result["is_neutral"], result["is_major_tournament"],
+        lang=req.lang,
     )
     return {"prediction": result, "narrative": narrative}
 
@@ -190,17 +205,13 @@ def explain_decision(req: ExplainRequest):
         result = predictor.predict(req.team_a, req.team_b, req.is_neutral, req.is_major_tournament)
     except (ValueError, RuntimeError) as e:
         raise HTTPException(status_code=400, detail=str(e))
-
-    if not AI_AVAILABLE:
-        raise HTTPException(status_code=503, detail="AI narrative unavailable. Set WATSONX_API_KEY+WATSONX_PROJECT_ID or HF_TOKEN.")
-
+    _ensure_ai()
     importances = predictor.get_feature_importances()
     top_features = [f["name"] for f in importances[:3]]
-
     explanation = generate_explain(
         result["team_a_win_prob"], result["draw_prob"], result["team_b_win_prob"],
         result["stats_a"], result["stats_b"],
-        top_features,
+        top_features, lang=req.lang,
     )
     return {
         "prediction": result,
@@ -275,15 +286,57 @@ def momentum_analysis(req: ExplainRequest):
         result = predictor.predict(req.team_a, req.team_b, req.is_neutral, req.is_major_tournament)
     except (ValueError, RuntimeError) as e:
         raise HTTPException(status_code=400, detail=str(e))
-
-    if not AI_AVAILABLE:
-        raise HTTPException(status_code=503, detail="AI narrative unavailable. Set WATSONX_API_KEY+WATSONX_PROJECT_ID or HF_TOKEN.")
-
+    _ensure_ai()
     analysis = generate_momentum(
         result["team_a"], result["team_b"],
         result["team_a_win_prob"], result["team_b_win_prob"],
+        lang=req.lang,
     )
     return {"prediction": result, "analysis": analysis}
+
+
+@app.post("/explain/tactical")
+def tactical_analysis(req: ExplainRequest):
+    """Addresses: WHY did a tactical change succeed or fail? HOW might the match unfold?"""
+    try:
+        result = predictor.predict(req.team_a, req.team_b, req.is_neutral, req.is_major_tournament)
+    except (ValueError, RuntimeError) as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    _ensure_ai()
+    analysis = generate_tactical(
+        req.team_a, req.team_b,
+        result["team_a_win_prob"], result["draw_prob"], result["team_b_win_prob"],
+        result["stats_a"], result["stats_b"],
+        result["is_neutral"], result["is_major_tournament"],
+        lang=req.lang,
+    )
+    return {"prediction": result, "analysis": analysis}
+
+
+@app.post("/explain/var")
+def var_explanation(req: VARRequest):
+    """Addresses: WHY was a decision controversial or correct?"""
+    _ensure_ai()
+    explanation = generate_var_explanation(req.team_a, req.team_b, req.scenario, lang=req.lang)
+    return {"team_a": req.team_a, "team_b": req.team_b, "scenario": req.scenario, "explanation": explanation}
+
+
+@app.post("/explain/story")
+def match_story(req: ExplainRequest):
+    """Tells the full match story — who dominates, key moments, how it ends."""
+    try:
+        result = predictor.predict(req.team_a, req.team_b, req.is_neutral, req.is_major_tournament)
+    except (ValueError, RuntimeError) as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    _ensure_ai()
+    story = generate_story(
+        req.team_a, req.team_b,
+        result["team_a_win_prob"], result["draw_prob"], result["team_b_win_prob"],
+        result["stats_a"], result["stats_b"],
+        result["is_neutral"], result["is_major_tournament"],
+        lang=req.lang,
+    )
+    return {"prediction": result, "story": story}
 
 
 @app.post("/explain/legends")
@@ -293,27 +346,20 @@ def legends_matchup(req: LegendsRequest):
             raise HTTPException(status_code=400, detail=f"Unknown team: {req.team_a}")
         if req.team_b not in predictor.team_stats:
             raise HTTPException(status_code=400, detail=f"Unknown team: {req.team_b}")
-
         stats_a = predictor.team_stats[req.team_a]
         stats_b = predictor.team_stats[req.team_b]
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=503, detail=str(e))
-
-    if not AI_AVAILABLE:
-        raise HTTPException(status_code=503, detail="AI narrative unavailable. Set WATSONX_API_KEY+WATSONX_PROJECT_ID or HF_TOKEN.")
-
+    _ensure_ai()
     narrative = generate_legends(
         req.team_a, req.team_b, req.era_a, req.era_b,
-        stats_a, stats_b,
+        stats_a, stats_b, lang=req.lang,
     )
-
     return {
-        "team_a": req.team_a,
-        "team_b": req.team_b,
-        "era_a": req.era_a,
-        "era_b": req.era_b,
+        "team_a": req.team_a, "team_b": req.team_b,
+        "era_a": req.era_a, "era_b": req.era_b,
         "stats_a": {
             "winrate": round(stats_a["winrate"], 4),
             "goal_avg": round(stats_a["goal_avg"], 4),
@@ -328,30 +374,35 @@ def legends_matchup(req: LegendsRequest):
     }
 
 
+class TeachRequest(BaseModel):
+    question: str = "How does offside work?"
+    lang: str = "en"
+
+
+@app.post("/explain/teach")
+def teach_me(req: TeachRequest):
+    _ensure_ai()
+    explanation = generate_teach(req.question, lang=req.lang)
+    return {"question": req.question, "explanation": explanation}
+
+
 @app.post("/docling/analyze")
 async def docling_analyze(file: UploadFile = File(...)):
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files supported")
-
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
     try:
         content = await file.read()
         tmp.write(content)
         tmp.close()
-
         details = extract_match_details(tmp.name)
-
         if not details or not details.get("text"):
             raise HTTPException(status_code=422, detail="Could not extract text from PDF")
-
         if not WATSONX_AVAILABLE:
             raise HTTPException(status_code=503, detail="IBM watsonx.ai not configured.")
-
         analysis = generate_docling_analysis(details["text"])
-
         return {
-            "filename": file.filename,
-            "file_size": len(content),
+            "filename": file.filename, "file_size": len(content),
             "text_length": len(details["text"]),
             "teams": details.get("teams", ["Unknown"]),
             "score": details.get("score", "Unknown"),
