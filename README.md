@@ -21,7 +21,19 @@ license: apache-2.0
 [![Docling](https://img.shields.io/badge/IBM-Docling-00b4ff)](https://github.com/IBM/docling)
 [![Built with IBM Bob](https://img.shields.io/badge/Built%20with-IBM%20Bob-00b4ff)](https://bob.ibm.com/)
 [![Python 3.11](https://img.shields.io/badge/Python-3.11-00b4ff)](https://python.org)
+[![React](https://img.shields.io/badge/React-19-00b4ff)](https://react.dev)
+[![Vercel](https://img.shields.io/badge/Vercel-Deployed-00b4ff)](https://vercel.com)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.54-00b4ff)](https://streamlit.io)
+
+---
+
+## 🌐 Try It Live
+
+| Frontend | URL |
+|---|---|
+| **React App (Primary)** | [match-decoded.vercel.app](https://match-decoded.vercel.app) |
+| **Mirror** | [frontend-react-mauve-nu.vercel.app](https://frontend-react-mauve-nu.vercel.app) |
+| **Streamlit (HF Spaces)** | [agp9-match-decoded.hf.space](https://agp9-match-decoded.hf.space) |
 
 ---
 
@@ -168,24 +180,34 @@ Every prediction is fully transparent. View:
 - Python 3.11+
 - HuggingFace token (for Granite Inference API — included in code)
 
-### Installation
+### Quick Start (Streamlit)
 
 ```bash
-# Clone
 git clone https://github.com/agp-369/match-decoded.git
 cd match-decoded
-
-# Install dependencies
 pip install -r requirements.txt
 
 # Start the backend API
 python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000
 
-# In a new terminal, start the frontend
+# In a new terminal, start the Streamlit frontend
 streamlit run frontend/app.py
 ```
+Open `http://localhost:8501`
 
-Open your browser to `http://localhost:8501`
+### Quick Start (React)
+
+```bash
+git clone https://github.com/agp-369/match-decoded.git
+cd match-decoded/frontend-react
+npm install
+
+# Set backend URL (omit for standalone mode)
+echo "VITE_API_URL=http://localhost:8000" > .env
+
+npm run dev
+```
+Open `http://localhost:3000`
 
 ### Environment Variables
 Create a `.env` file in the project root:
@@ -278,6 +300,9 @@ Match Decoded — Every fan deserves to know WHY."
 | **LangChain** | Structured prompt engineering (5 templates) |
 | **IBM Docling** | PDF match report parsing |
 | **IBM Bob** | AI code assistant |
+| **React 19** | Interactive frontend UI |
+| **Vite** | Fast build tooling |
+| **Vercel** | Production deployment |
 | **Streamlit** | Interactive web frontend |
 | **FastAPI** | High-performance backend API |
 | **scikit-learn** | Random Forest prediction model |

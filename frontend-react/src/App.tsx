@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { TEAM_STATS } from './api'
+import { API, TEAM_STATS } from './api'
 import PreMatchTab from './components/PreMatchTab'
 import WhatIfTab from './components/WhatIfTab'
 import LegendsTab from './components/LegendsTab'
@@ -24,9 +24,11 @@ export default function App() {
   const setApiAvailable = (v: boolean) => setApiAvailableInternal(v)
 
   useEffect(() => {
-    fetch('http://localhost:8000/health', { signal: AbortSignal.timeout(3000) })
-      .then(r => setApiAvailableInternal(r.ok))
-      .catch(() => setApiAvailableInternal(false))
+    const ctrl = new AbortController()
+    const t = setTimeout(() => ctrl.abort(), 3000)
+    fetch(`${API}/health`, { signal: ctrl.signal })
+      .then(r => { clearTimeout(t); setApiAvailableInternal(r.ok) })
+      .catch(() => { clearTimeout(t); setApiAvailableInternal(false) })
   }, [])
 
   return (

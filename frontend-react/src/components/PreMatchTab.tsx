@@ -42,7 +42,6 @@ export default function PreMatchTab({ apiAvailable, setApiAvailable }: Props) {
 
   return (
     <div>
-      {}
       <div className="grid-2">
         <div className="team-card team-a">
           <span className="team-flag">{flagA}</span>
@@ -64,7 +63,6 @@ export default function PreMatchTab({ apiAvailable, setApiAvailable }: Props) {
         </div>
       </div>
 
-      {}
       <div className="glass-card gold-border">
         <div className="checkbox-group">
           <input type="checkbox" id="neutral" checked={neutral} onChange={e => setNeutral(e.target.checked)} />
@@ -76,7 +74,6 @@ export default function PreMatchTab({ apiAvailable, setApiAvailable }: Props) {
         </div>
       </div>
 
-      {}
       <button className="btn-primary" onClick={run} disabled={loading}>
         {loading ? <><span className="spinner" /> Analyzing...</> : '🎯 Analyze Match'}
       </button>
@@ -84,12 +81,10 @@ export default function PreMatchTab({ apiAvailable, setApiAvailable }: Props) {
       {}
       {(pred || narrative) && (
         <div className="glass-card gold-border" style={{ marginTop: '1rem' }}>
-          {}
           <div className="section-heading">
             <span className="accent">●</span> Match Prediction
           </div>
 
-          {}
           <div className="scoreboard">
             <div className="scoreboard-team">
               <span className="flag">{flagA}</span>
@@ -109,7 +104,6 @@ export default function PreMatchTab({ apiAvailable, setApiAvailable }: Props) {
             </div>
           </div>
 
-          {}
           <div style={{ margin: '0.5rem 0' }}>
             <div className="progress-label">
               <span>{a}</span>
