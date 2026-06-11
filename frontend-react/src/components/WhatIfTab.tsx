@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { TEAMS, TEAM_STATS, teamFlag, apiPost, predictLocalWithForm, fmtPct, generateMomentum } from '../api'
+import { useState, useEffect } from 'react'
+import { TEAMS, TEAM_STATS, teamFlag, apiPost, fmtPct, generateMomentum, type Prediction } from '../api'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 interface Props { apiAvailable: boolean; setApiAvailable: (v: boolean) => void }
@@ -32,15 +32,49 @@ function TeamSelect({ value, onChange, exclude }: { value: string; onChange: (v:
 export default function WhatIfTab({ apiAvailable, setApiAvailable }: Props) {
   const [a, setA] = useState('Brazil')
   const [b, setB] = useState('England')
-  const [formA, setFormA] = useState(TEAM_STATS[a]?.form ?? 0.5)
-  const [formB, setFormB] = useState(TEAM_STATS[b]?.form ?? 0.5)
+  const [formA, setFormA] = useState(0.5)
+  const [formB, setFormB] = useState(0.5)
   const [neutral, setNeutral] = useState(false)
   const [major, setMajor] = useState(true)
   const [narrative, setNarrative] = useState('')
   const [loading, setLoading] = useState(false)
   const [showMomentum, setShowMomentum] = useState(false)
+  const [basePred, setBasePred] = useState<Prediction | null>(null)
 
-  const p = predictLocalWithForm(a, b, neutral, major, formA, formB)
+  const localFallback = (ta: string, tb: string, n: boolean, m: boolean) => {
+    const sa = TEAM_STATS[ta] || { winrate: 0.5, goal_avg: 1.5, form: 0.5, matches: 500 }
+    const sb = TEAM_STATS[tb] || { winrate: 0.5, goal_avg: 1.5, form: 0.5, matches: 500 }
+    setBasePred({
+      team_a: ta, team_b: tb,
+      team_a_win_prob: 0.4, draw_prob: 0.25, team_b_win_prob: 0.35,
+      is_neutral: n, is_major_tournament: m,
+      stats_a: sa, stats_b: sb,
+    })
+  }
+
+  useEffect(() => {
+    if (apiAvailable) {
+      apiPost<Prediction>('/predict', { team_a: a, team_b: b, is_neutral: neutral, is_major_tournament: major })
+        .then(r => {
+          if (r) { setBasePred(r); setFormA(r.stats_a.form); setFormB(r.stats_b.form) }
+          else { localFallback(a, b, neutral, major); setApiAvailable(false) }
+        })
+    } else {
+      localFallback(a, b, neutral, major)
+    }
+  }, [a, b])
+
+  const teamFormA = basePred?.stats_a?.form ?? TEAM_STATS[a]?.form ?? 0.5
+  const teamFormB = basePred?.stats_b?.form ?? TEAM_STATS[b]?.form ?? 0.5
+
+  const p = (() => {
+    if (!basePred) return { team_a_win_prob: 0.4, draw_prob: 0.25, team_b_win_prob: 0.35 }
+    const adjA = basePred.team_a_win_prob * (formA / teamFormA)
+    const adjB = basePred.team_b_win_prob * (formB / teamFormB)
+    const adjD = basePred.draw_prob
+    const total = adjA + adjB + adjD
+    return { team_a_win_prob: adjA / total, draw_prob: adjD / total, team_b_win_prob: adjB / total }
+  })()
 
   const run = async () => {
     setLoading(true)
@@ -51,8 +85,6 @@ export default function WhatIfTab({ apiAvailable, setApiAvailable }: Props) {
       })
       if (r) setNarrative(r.narrative)
       else { setApiAvailable(false); setNarrative('') }
-    } else {
-      setNarrative('')
     }
     setLoading(false)
   }
@@ -69,8 +101,8 @@ export default function WhatIfTab({ apiAvailable, setApiAvailable }: Props) {
           Adjust team form, venue, and tournament type. Watch the prediction shift in real time.
         </p>
         <div className="grid-2" style={{ gap: '0.5rem', marginBottom: '1rem' }}>
-          <TeamSelect value={a} onChange={v => { setA(v); setFormA(TEAM_STATS[v]?.form ?? 0.5) }} exclude={b} />
-          <TeamSelect value={b} onChange={v => { setB(v); setFormB(TEAM_STATS[v]?.form ?? 0.5) }} exclude={a} />
+          <TeamSelect value={a} onChange={v => { setA(v) }} exclude={b} />
+          <TeamSelect value={b} onChange={v => { setB(v) }} exclude={a} />
         </div>
 
         <div style={{ margin: '0.8rem 0' }}>

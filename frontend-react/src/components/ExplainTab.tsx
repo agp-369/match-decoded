@@ -1,41 +1,48 @@
-import { useState } from 'react'
-import { fmtPct, apiPost, generateMomentum } from '../api'
+import { useState, useEffect } from 'react'
+import { fmtPct, apiPost, generateMomentum, type FeatureImportance } from '../api'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 interface Props { apiAvailable: boolean; setApiAvailable: (v: boolean) => void }
-
-const TOP_FEATURES = [
-  { name: 'Historical ELO Rating (Home)', key: 'home_elo', importance: 0.185 },
-  { name: 'Historical ELO Rating (Away)', key: 'away_elo', importance: 0.172 },
-  { name: 'ELO Rating Difference', key: 'elo_diff', importance: 0.162 },
-  { name: 'Recent Form (Home, last 10)', key: 'home_recent_form', importance: 0.142 },
-  { name: 'Recent Form (Away, last 10)', key: 'away_recent_form', importance: 0.125 },
-  { name: 'Goal Scoring Avg (Home)', key: 'home_goal_avg_rolling', importance: 0.098 },
-  { name: 'Goal Scoring Avg (Away)', key: 'away_goal_avg_rolling', importance: 0.082 },
-  { name: 'Head-to-Head Record', key: 'h2h', importance: 0.034 },
-]
 
 export default function ExplainTab({ apiAvailable, setApiAvailable }: Props) {
   const [narrative, setNarrative] = useState('')
   const [loading, setLoading] = useState(false)
   const [showTimeline, setShowTimeline] = useState(false)
+  const [features, setFeatures] = useState<FeatureImportance[] | null>(null)
+  const [prediction, setPrediction] = useState<{ a: number; d: number; b: number } | null>(null)
+
+  useEffect(() => {
+    if (!features) {
+      apiPost<{ prediction: { team_a_win_prob: number; draw_prob: number; team_b_win_prob: number }; feature_importances: FeatureImportance[] }>('/explain/decision', {
+        team_a: 'Brazil', team_b: 'Argentina', is_neutral: true, is_major_tournament: true,
+      }).then(r => {
+        if (r) {
+          setFeatures(r.feature_importances)
+          setPrediction({ a: r.prediction.team_a_win_prob, d: r.prediction.draw_prob, b: r.prediction.team_b_win_prob })
+        }
+      })
+    }
+  }, [features])
 
   const run = async () => {
     setLoading(true)
     setNarrative('')
     if (apiAvailable) {
-      const r = await apiPost<{ explanation: string }>('/explain/decision', {
+      const r = await apiPost<{ explanation: string; feature_importances: FeatureImportance[] }>('/explain/decision', {
         team_a: 'Brazil', team_b: 'Argentina', is_neutral: true, is_major_tournament: true,
       })
-      if (r && r.explanation) setNarrative(r.explanation)
-      else { setApiAvailable(false); setNarrative('') }
-    } else {
-      setNarrative('')
+      if (r) {
+        if (r.explanation) setNarrative(r.explanation)
+        if (r.feature_importances) setFeatures(r.feature_importances)
+      } else {
+        setApiAvailable(false)
+      }
     }
     setLoading(false)
   }
 
-  const momentum = showTimeline ? generateMomentum(0.423, 0.252, 0.325) : []
+  const probs = prediction || { a: 0.423, d: 0.252, b: 0.325 }
+  const momentum = showTimeline ? generateMomentum(probs.a, probs.d, probs.b) : []
 
   return (
     <div>
@@ -44,29 +51,36 @@ export default function ExplainTab({ apiAvailable, setApiAvailable }: Props) {
           <span className="accent">●</span> Model Decision Trace
         </div>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1rem', lineHeight: 1.6 }}>
-          Every prediction is built from 10 factors. The XGBoost ensemble model evaluates these simultaneously, weighted by historical importance.
+          Every prediction is built from 12 factors. The XGBoost ensemble model evaluates these simultaneously, weighted by historical importance.
         </p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-          {TOP_FEATURES.map((f, i) => {
-            const pct = (f.importance / TOP_FEATURES[0].importance) * 100
-            return (
-              <div key={f.key}>
-                <div className="progress-label">
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <span style={{ color: 'var(--gold)', fontSize: '0.75rem', fontWeight: 700 }}>0{i + 1}</span>
-                    {f.name}
-                  </span>
-                  <span style={{ color: 'var(--gold-light)', fontWeight: 600, fontFamily: 'var(--font-mono)' }}>
-                    {(f.importance * 100).toFixed(1)}%
-                  </span>
+        {features ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+            {features.map((f, i) => {
+              const maxImp = features[0].importance
+              const pct = maxImp > 0 ? (f.importance / maxImp) * 100 : 0
+              return (
+                <div key={f.name}>
+                  <div className="progress-label">
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <span style={{ color: 'var(--gold)', fontSize: '0.75rem', fontWeight: 700 }}>0{i + 1}</span>
+                      {f.name}
+                    </span>
+                    <span style={{ color: 'var(--gold-light)', fontWeight: 600, fontFamily: 'var(--font-mono)' }}>
+                      {(f.importance * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                  <div className="progress-bar">
+                    <div className="progress-fill" style={{ width: `${pct}%` }} />
+                  </div>
                 </div>
-                <div className="progress-bar">
-                  <div className="progress-fill" style={{ width: `${pct}%` }} />
-                </div>
-              </div>
-            )
-          })}
-        </div>
+              )
+            })}
+          </div>
+        ) : (
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', textAlign: 'center', padding: '1rem' }}>
+            Click "Explain with Granite" to load live feature importances from the model.
+          </p>
+        )}
       </div>
 
       <div style={{ display: 'flex', gap: '0.5rem' }}>

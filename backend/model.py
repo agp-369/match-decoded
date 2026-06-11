@@ -96,14 +96,14 @@ class MatchPredictor:
             "stats_a": {
                 "winrate": round(a["winrate"], 4),
                 "goal_avg": round(a["goal_avg"], 4),
-                "recent_form": round(a["recent_form"], 4),
-                "matches_played": a["matches_played"],
+                "form": round(a["recent_form"], 4),
+                "matches": a["matches_played"],
             },
             "stats_b": {
                 "winrate": round(b["winrate"], 4),
                 "goal_avg": round(b["goal_avg"], 4),
-                "recent_form": round(b["recent_form"], 4),
-                "matches_played": b["matches_played"],
+                "form": round(b["recent_form"], 4),
+                "matches": b["matches_played"],
             },
         }
 

@@ -124,9 +124,9 @@ def generate_preview(team_a: str, team_b: str, prob_a: float, prob_draw: float, 
         prob_a_pct=f"{prob_a*100:.1f}", prob_draw_pct=f"{prob_draw*100:.1f}",
         prob_b_pct=f"{prob_b*100:.1f}",
         winrate_a=f"{stats_a['winrate']:.1%}", goal_avg_a=f"{stats_a['goal_avg']:.2f}",
-        form_a=f"{stats_a['recent_form']:.1%}",
+        form_a=f"{stats_a['form']:.1%}",
         winrate_b=f"{stats_b['winrate']:.1%}", goal_avg_b=f"{stats_b['goal_avg']:.2f}",
-        form_b=f"{stats_b['recent_form']:.1%}",
+        form_b=f"{stats_b['form']:.1%}",
         venue=venue, tournament=tournament,
     )
     return query_granite(prompt)
@@ -160,8 +160,8 @@ def generate_legends(team_a: str, team_b: str, era_a: str, era_b: str,
     prompt = LEGENDS_TEMPLATE.format(
         team_a=team_a, team_b=team_b, era_a=era_a, era_b=era_b,
         winrate_a=f"{stats_a['winrate']:.1%}", goal_avg_a=f"{stats_a['goal_avg']:.2f}",
-        matches_a=stats_a['matches_played'],
+        matches_a=stats_a['matches'],
         winrate_b=f"{stats_b['winrate']:.1%}", goal_avg_b=f"{stats_b['goal_avg']:.2f}",
-        matches_b=stats_b['matches_played'],
+        matches_b=stats_b['matches'],
     )
     return query_granite(prompt)

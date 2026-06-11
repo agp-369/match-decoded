@@ -203,12 +203,12 @@ def legends_matchup(req: LegendsRequest):
         "stats_a": {
             "winrate": round(stats_a["winrate"], 4),
             "goal_avg": round(stats_a["goal_avg"], 4),
-            "matches_played": stats_a["matches_played"],
+            "matches": stats_a["matches_played"],
         },
         "stats_b": {
             "winrate": round(stats_b["winrate"], 4),
             "goal_avg": round(stats_b["goal_avg"], 4),
-            "matches_played": stats_b["matches_played"],
+            "matches": stats_b["matches_played"],
         },
         "narrative": narrative,
     }
