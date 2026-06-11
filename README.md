@@ -4,7 +4,7 @@ emoji: ⚽
 colorFrom: indigo
 colorTo: blue
 sdk: streamlit
-sdk_version: "1.54.0"
+sdk_version: "1.52.0"
 app_file: frontend/app.py
 pinned: false
 license: apache-2.0
