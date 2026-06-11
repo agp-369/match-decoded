@@ -1,21 +1,24 @@
-import { useState } from 'react'
-import { TEAMS, predictLocal, fmtPct, teamFlag, apiPost, getH2H, distance, type Prediction, type TeamStats } from '../api'
+import { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
+import { cachedTeams, teamFlag, apiPost, fetchMomentum, fmtPct, type Prediction, type MomentumPoint } from '../api'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
-interface Props { apiAvailable: boolean; setApiAvailable: (v: boolean) => void }
-
-const FAMOUS_MATCHUPS = [
+const QUICK_MATCHUPS: [string, string][] = [
   ['Brazil', 'Argentina'], ['Germany', 'France'], ['England', 'Germany'],
-  ['Netherlands', 'Argentina'], ['Portugal', 'Spain'], ['Italy', 'Brazil'],
+  ['Argentina', 'France'], ['Portugal', 'Spain'], ['Netherlands', 'Belgium'],
+  ['Italy', 'Spain'], ['Uruguay', 'Brazil'],
+  ['England', 'France'], ['Croatia', 'Brazil'],
 ]
 
-function TeamSelect({ value, onChange, exclude, side }: { value: string; onChange: (v: string) => void; exclude: string; side: 'a' | 'b' }) {
+interface Props { apiAvailable: boolean; setApiAvailable: (v: boolean) => void; wcMode: boolean }
+
+function TeamSelect({ value, onChange, exclude, teams }: { value: string; onChange: (v: string) => void; exclude: string; teams: string[] }) {
   const [open, setOpen] = useState(false)
   const [q, setQ] = useState('')
-  const filtered = TEAMS.filter(t => t !== exclude && t.toLowerCase().includes(q.toLowerCase())).slice(0, 30)
+  const filtered = teams.filter(t => t !== exclude && t.toLowerCase().includes(q.toLowerCase())).slice(0, 30)
   return (
     <div style={{ position: 'relative' }}>
-      <input className="team-select-input"
-        placeholder={side === 'a' ? 'Home team...' : 'Away team...'}
+      <input className="team-select-input" placeholder="Search 224 teams..."
         value={open ? q : `${teamFlag(value)} ${value}`}
         onFocus={() => { setOpen(true); setQ('') }}
         onBlur={() => setTimeout(() => setOpen(false), 200)}
@@ -28,177 +31,226 @@ function TeamSelect({ value, onChange, exclude, side }: { value: string; onChang
               <span className="team-select-flag">{teamFlag(t)}</span> {t}
             </div>
           ))}
-          {filtered.length === 0 && <div className="team-select-option" style={{ opacity: 0.5 }}>No teams found</div>}
         </div>
       )}
     </div>
   )
 }
 
-export default function PreMatchTab({ apiAvailable, setApiAvailable }: Props) {
+const containerVar = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.05 } } }
+const itemVar = { hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }
+
+export default function PreMatchTab({ apiAvailable, setApiAvailable, wcMode }: Props) {
+  const [teams, setTeams] = useState<string[]>(['Brazil', 'Argentina', 'England', 'France', 'Germany'])
   const [a, setA] = useState('Brazil')
-  const [b, setB] = useState('Argentina')
+  const [b, setB] = useState('England')
   const [neutral, setNeutral] = useState(false)
-  const [major, setMajor] = useState(false)
-  const [pred, setPred] = useState<Prediction | null>(null)
+  const [major, setMajor] = useState(true)
   const [narrative, setNarrative] = useState('')
   const [loading, setLoading] = useState(false)
+  const [pred, setPred] = useState<Prediction | null>(null)
+  const [momentum, setMomentum] = useState<MomentumPoint[]>([])
+  const [showMomentum, setShowMomentum] = useState(false)
 
-  const run = async (ta = a, tb = b, n = neutral, m = major) => {
+  useEffect(() => {
+    cachedTeams()
+    const t = setTimeout(() => {
+      const all = cachedTeams().map(x => x.name)
+      setTeams(all)
+      if (all.length > 0 && !all.includes(a)) setA(all[0])
+      if (all.length > 0 && !all.includes(b)) setB(all[Math.min(1, all.length - 1)])
+    }, 100)
+    return () => clearTimeout(t)
+  }, [])
+
+  useEffect(() => {
+    if (!a || !b || a === b) return
+    setPred(null); setNarrative(''); setMomentum([])
+    if (apiAvailable) {
+      apiPost<Prediction>('/predict', { team_a: a, team_b: b, is_neutral: neutral, is_major_tournament: major })
+        .then(r => { if (r) setPred(r) })
+    }
+  }, [a, b])
+
+  const quickMatchups = wcMode
+    ? QUICK_MATCHUPS.filter(([x, y]) => teams.includes(x) && teams.includes(y))
+    : QUICK_MATCHUPS
+
+  const run = async () => {
+    if (!a || !b || a === b) return
     setLoading(true)
     setNarrative('')
-    setPred(null)
+    setMomentum([])
 
     if (apiAvailable) {
-      const [predRes, narrRes] = await Promise.allSettled([
-        apiPost<Prediction>('/predict', { team_a: ta, team_b: tb, is_neutral: n, is_major_tournament: m }),
-        apiPost<{ narrative: string }>('/explain/preview', { team_a: ta, team_b: tb, is_neutral: n, is_major_tournament: m }),
+      const [predRes, narrRes, momRes] = await Promise.allSettled([
+        apiPost<Prediction>('/predict', { team_a: a, team_b: b, is_neutral: neutral, is_major_tournament: major }),
+        apiPost<{ narrative: string }>('/explain/preview', { team_a: a, team_b: b, is_neutral: neutral, is_major_tournament: major }),
+        fetchMomentum(a, b, neutral, major),
       ])
-      if (predRes.status === 'fulfilled' && predRes.value) {
-        setPred(predRes.value)
-      } else {
-        setPred(predictLocal(ta, tb, n, m))
-        setApiAvailable(false)
-      }
-      if (narrRes.status === 'fulfilled' && narrRes.value?.narrative) {
-        setNarrative(narrRes.value.narrative)
-      }
-    } else {
-      setPred(predictLocal(ta, tb, n, m))
+      if (predRes.status === 'fulfilled' && predRes.value) setPred(predRes.value)
+      if (narrRes.status === 'fulfilled' && narrRes.value?.narrative) setNarrative(narrRes.value.narrative)
+      if (momRes.status === 'fulfilled' && momRes.value?.momentum) setMomentum(momRes.value.momentum)
     }
     setLoading(false)
   }
 
-  const quickPick = (ta: string, tb: string) => {
-    setA(ta); setB(tb); setNeutral(true); setMajor(true)
-    run(ta, tb, true, true)
-  }
-
-  const p = pred || predictLocal(a, b, neutral, major)
-  const flagA = teamFlag(a)
-  const flagB = teamFlag(b)
-  const aw = p.team_a_win_prob * 100
-  const bw = p.team_b_win_prob * 100
-  const dw = p.draw_prob * 100
-  const aIsFav = aw > bw
-  const h2h = getH2H(a, b)
-  const dist = distance(a, b)
+  const p = pred
+  const homeProb = p?.team_a_win_prob ?? 0.4
+  const drawProb = p?.draw_prob ?? 0.25
+  const awayProb = p?.team_b_win_prob ?? 0.35
 
   return (
-    <div>
-      <div className="glass-card" style={{ marginBottom: '0.8rem' }}>
-        <div className="section-heading" style={{ fontSize: '0.75rem', marginBottom: '0.5rem' }}>
-          <span className="accent">●</span> Quick Pick
+    <motion.div variants={containerVar} initial="hidden" animate="show">
+      <div className="glass-card gold-border">
+        <motion.div variants={itemVar} className="section-heading">
+          <span className="accent">●</span> Match Selection
+        </motion.div>
+        <div className="grid-2" style={{ gap: '0.5rem', marginBottom: '0.8rem' }}>
+          <TeamSelect value={a} onChange={setA} exclude={b} teams={teams} />
+          <TeamSelect value={b} onChange={setB} exclude={a} teams={teams} />
         </div>
-        <div className="matchup-grid">
-          {FAMOUS_MATCHUPS.map(([ta, tb]) => (
-            <div key={`${ta}-${tb}`} className="matchup-card" onClick={() => quickPick(ta, tb)}>
+        <motion.div variants={itemVar} style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '0.8rem' }}>
+          {quickMatchups.map(([ta, tb]) => (
+            <motion.div key={`${ta}-${tb}`} className="matchup-card" onClick={() => { setA(ta); setB(tb) }}
+              whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <span>{teamFlag(ta)} {ta}</span>
               <span className="matchup-vs">vs</span>
               <span>{teamFlag(tb)} {tb}</span>
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
+        <motion.div variants={itemVar} style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+          <div className="checkbox-group">
+            <input type="checkbox" id="pn" checked={neutral} onChange={e => setNeutral(e.target.checked)} />
+            <label htmlFor="pn">Neutral Venue</label>
+          </div>
+          <div className="checkbox-group">
+            <input type="checkbox" id="pm" checked={major} onChange={e => setMajor(e.target.checked)} />
+            <label htmlFor="pm">Major Tournament</label>
+          </div>
+        </motion.div>
       </div>
 
-      <div className="grid-2" style={{ marginBottom: '0.8rem' }}>
-        <TeamSelect value={a} onChange={v => { setA(v); setPred(null); setNarrative('') }} exclude={b} side="a" />
-        <TeamSelect value={b} onChange={v => { setB(v); setPred(null); setNarrative('') }} exclude={a} side="b" />
-      </div>
-
-      <div className="grid-2">
-        <div className="team-card team-a">
-          <span className="team-flag">{flagA}</span>
-          <div className="team-name">{a}</div>
-          <div style={{ marginTop: '0.5rem' }}>
-            <div className="team-stat"><span className="team-stat-label">Win Rate</span><span className="team-stat-value">{fmtPct(p.stats_a.winrate)}</span></div>
-            <div className="team-stat"><span className="team-stat-label">Goals/Game</span><span className="team-stat-value">{p.stats_a.goal_avg.toFixed(2)}</span></div>
-            <div className="team-stat"><span className="team-stat-label">Matches</span><span className="team-stat-value">{p.stats_a.matches}</span></div>
-          </div>
-        </div>
-        <div className="team-card team-b">
-          <span className="team-flag">{flagB}</span>
-          <div className="team-name">{b}</div>
-          <div style={{ marginTop: '0.5rem' }}>
-            <div className="team-stat"><span className="team-stat-label">Win Rate</span><span className="team-stat-value">{fmtPct(p.stats_b.winrate)}</span></div>
-            <div className="team-stat"><span className="team-stat-label">Goals/Game</span><span className="team-stat-value">{p.stats_b.goal_avg.toFixed(2)}</span></div>
-            <div className="team-stat"><span className="team-stat-label">Matches</span><span className="team-stat-value">{p.stats_b.matches}</span></div>
-          </div>
-        </div>
-      </div>
-
-      {h2h && (
-        <div className="glass-card" style={{ margin: '0.8rem 0', padding: '0.8rem 1rem' }}>
-          <div className="section-heading" style={{ fontSize: '0.8rem', marginBottom: '0.5rem' }}>
-            <span className="accent">●</span> Head-to-Head Record
-          </div>
-          <div className="h2h-row">
-            <div className="h2h-stat"><span className="h2h-value" style={{ color: '#22c55e' }}>{h2h.a_wins}</span><span className="h2h-label">{a} wins</span></div>
-            <div className="h2h-stat"><span className="h2h-value" style={{ color: '#94a3b8' }}>{h2h.draws}</span><span className="h2h-label">Draws</span></div>
-            <div className="h2h-stat"><span className="h2h-value" style={{ color: '#ef4444' }}>{h2h.b_wins}</span><span className="h2h-label">{b} wins</span></div>
-            <div className="h2h-stat"><span className="h2h-value" style={{ color: '#f59e0b' }}>{h2h.total}</span><span className="h2h-label">Total meetings</span></div>
-          </div>
-        </div>
-      )}
-
-      {dist && <div className="context-line">{flagA} {a} · {dist} · {flagB} {b}</div>}
-
-      <div className="glass-card gold-border">
-        <div className="checkbox-group">
-          <input type="checkbox" id="neutral" checked={neutral} onChange={e => setNeutral(e.target.checked)} />
-          <label htmlFor="neutral">Neutral Venue</label>
-        </div>
-        <div className="checkbox-group">
-          <input type="checkbox" id="major" checked={major} onChange={e => setMajor(e.target.checked)} />
-          <label htmlFor="major">Major Tournament (World Cup / Euro / Copa)</label>
-        </div>
-      </div>
-
-      <button className="btn-primary" onClick={() => run()} disabled={loading}>
-        {loading ? <><span className="spinner" /> Analyzing...</> : '🎯 Analyze Match'}
-      </button>
-
-      {(pred || narrative) && (
-        <div className="glass-card gold-border" style={{ marginTop: '1rem' }}>
-          <div className="section-heading">
-            <span className="accent">●</span> Match Prediction
+      {p && (
+        <motion.div variants={itemVar} className="glass-card gold-border">
+          <div className="section-heading"><span className="accent">●</span> Prediction</div>
+          <div className="grid-2" style={{ gap: '1rem', marginBottom: '1rem' }}>
+            <div className="team-card team-a">
+              <span className="team-flag">{teamFlag(p.team_a)}</span>
+              <div className="team-name">{p.team_a}</div>
+              <div className="team-stat"><span className="team-stat-label">Win Rate</span><span className="team-stat-value">{fmtPct(p.stats_a.winrate)}</span></div>
+              <div className="team-stat"><span className="team-stat-label">Goals/Game</span><span className="team-stat-value">{p.stats_a.goal_avg.toFixed(2)}</span></div>
+              <div className="team-stat"><span className="team-stat-label">Recent Form</span><span className="team-stat-value">{fmtPct(p.stats_a.form)}</span></div>
+              <div className="team-stat"><span className="team-stat-label">Matches</span><span className="team-stat-value">{p.stats_a.matches.toLocaleString()}</span></div>
+            </div>
+            <div className="team-card team-b">
+              <span className="team-flag">{teamFlag(p.team_b)}</span>
+              <div className="team-name">{p.team_b}</div>
+              <div className="team-stat"><span className="team-stat-label">Win Rate</span><span className="team-stat-value">{fmtPct(p.stats_b.winrate)}</span></div>
+              <div className="team-stat"><span className="team-stat-label">Goals/Game</span><span className="team-stat-value">{p.stats_b.goal_avg.toFixed(2)}</span></div>
+              <div className="team-stat"><span className="team-stat-label">Recent Form</span><span className="team-stat-value">{fmtPct(p.stats_b.form)}</span></div>
+              <div className="team-stat"><span className="team-stat-label">Matches</span><span className="team-stat-value">{p.stats_b.matches.toLocaleString()}</span></div>
+            </div>
           </div>
 
           <div className="scoreboard">
             <div className="scoreboard-team">
-              <span className="flag">{flagA}</span>
-              <div className="name">{a}</div>
-              <div className={`prob ${aIsFav ? 'prob-fav' : ''}`} style={{ color: aIsFav ? '#22c55e' : '#94a3b8' }}>{aw.toFixed(1)}%</div>
+              <span className="flag">{teamFlag(p.team_a)}</span>
+              <div className="name" style={{ fontSize: '0.8rem' }}>{p.team_a}</div>
+              <motion.div className="prob" style={{ color: '#22c55e' }}
+                initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 100 }}>
+                {(homeProb * 100).toFixed(1)}%
+              </motion.div>
             </div>
             <div className="scoreboard-divider" />
-            <div className="scoreboard-vs">vs</div>
-            <div className="scoreboard-vs" style={{ color: '#64748b', fontSize: '0.75rem', marginTop: '0.3rem' }}>
-              Draw {dw.toFixed(1)}%
+            <div>
+              <div style={{ color: '#64748b', fontSize: '0.75rem' }}>Draw</div>
+              <div style={{ color: '#94a3b8', fontSize: '1rem', fontWeight: 700 }}>{(drawProb * 100).toFixed(1)}%</div>
+              <div style={{ marginTop: '0.3rem' }}>
+                <div className="progress-bar" style={{ width: '80px', margin: '0 auto' }}>
+                  <motion.div className="progress-fill" initial={{ width: 0 }} animate={{ width: `${drawProb * 100}%` }} transition={{ duration: 0.8, ease: 'easeOut' }} />
+                </div>
+              </div>
             </div>
             <div className="scoreboard-divider" />
             <div className="scoreboard-team">
-              <span className="flag">{flagB}</span>
-              <div className="name">{b}</div>
-              <div className={`prob ${!aIsFav ? 'prob-fav' : ''}`} style={{ color: !aIsFav ? '#22c55e' : '#94a3b8' }}>{bw.toFixed(1)}%</div>
+              <span className="flag">{teamFlag(p.team_b)}</span>
+              <div className="name" style={{ fontSize: '0.8rem' }}>{p.team_b}</div>
+              <motion.div className="prob" style={{ color: '#ef4444' }}
+                initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 100 }}>
+                {(awayProb * 100).toFixed(1)}%
+              </motion.div>
             </div>
           </div>
 
-          <div style={{ margin: '0.5rem 0' }}>
-            <div className="progress-label"><span>{a}</span><span>{fmtPct(p.team_a_win_prob)}</span></div>
-            <div className="progress-bar"><div className="progress-fill" style={{ width: `${aw}%` }} /></div>
-          </div>
-          <div style={{ margin: '0.5rem 0' }}>
-            <div className="progress-label"><span>Draw</span><span>{fmtPct(p.draw_prob)}</span></div>
-            <div className="progress-bar"><div className="progress-fill" style={{ width: `${dw}%`, background: 'linear-gradient(90deg, #64748b, #94a3b8)' }} /></div>
-          </div>
-          <div style={{ margin: '0.5rem 0' }}>
-            <div className="progress-label"><span>{b}</span><span>{fmtPct(p.team_b_win_prob)}</span></div>
-            <div className="progress-bar"><div className="progress-fill" style={{ width: `${bw}%`, background: 'linear-gradient(90deg, #ef4444, #dc2626)' }} /></div>
+          <div className="insight-cards">
+            <div className="insight-card">
+              <div className="insight-label">Home Win</div>
+              <div className="progress-bar"><motion.div className="progress-fill" initial={{ width: 0 }} animate={{ width: `${homeProb * 100}%` }} transition={{ duration: 0.8 }} style={{ background: 'linear-gradient(90deg, #22c55e, #16a34a)' }} /></div>
+            </div>
+            <div className="insight-card">
+              <div className="insight-label">Away Win</div>
+              <div className="progress-bar"><motion.div className="progress-fill" initial={{ width: 0 }} animate={{ width: `${awayProb * 100}%` }} transition={{ duration: 0.8 }} style={{ background: 'linear-gradient(90deg, #ef4444, #dc2626)' }} /></div>
+            </div>
+            <div className="insight-card insight-card-edge">
+              <div className="insight-label">Predicted Outcome</div>
+              <div className="insight-value">
+                {homeProb > awayProb && homeProb > drawProb ? `🏠 ${p.team_a} wins` :
+                 awayProb > homeProb && awayProb > drawProb ? `✈️ ${p.team_b} wins` : '🤝 Draw'}
+                {' · '}
+                {homeProb > 0.6 ? 'High confidence' : homeProb > 0.45 ? 'Moderate' : 'Toss-up'}
+              </div>
+            </div>
           </div>
 
-          {narrative && <div className="granite-box">{narrative}</div>}
-        </div>
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.8rem' }}>
+            <button className="btn-primary" onClick={run} disabled={loading} style={{ flex: 1 }}>
+              {loading ? <><span className="spinner" /> Analyzing...</> : '🤖 Analyze with Granite'}
+            </button>
+            <button className="btn-secondary" onClick={() => { if (momentum.length === 0) fetchMomentum(a, b, neutral, major).then(r => { if (r?.momentum) setMomentum(r.momentum); setShowMomentum(!showMomentum) }); else setShowMomentum(!showMomentum) }}>
+              {showMomentum ? 'Hide Timeline' : '📈 Match Timeline'}
+            </button>
+          </div>
+
+          {showMomentum && momentum.length > 0 && (
+            <motion.div className="glass-card" style={{ marginTop: '0.8rem', padding: '1rem' }}
+              initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
+              <div className="section-heading" style={{ fontSize: '0.95rem' }}>
+                <span className="accent">●</span> Simulated Match Momentum
+              </div>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem', marginBottom: '0.5rem' }}>
+                Momentum simulation based on team strength differences — shows how key events shift win probability over 90 minutes.
+              </p>
+              <ResponsiveContainer width="100%" height={180}>
+                <LineChart data={momentum}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                  <XAxis dataKey="minute" tick={{ fill: '#5a6a80', fontSize: 9 }} />
+                  <YAxis domain={[0, 1]} tick={{ fill: '#5a6a80', fontSize: 9 }} tickFormatter={v => `${(v * 100).toFixed(0)}%`} />
+                  <Tooltip contentStyle={{ background: '#0a0e27', border: '1px solid rgba(245,158,11,0.2)', borderRadius: '8px', fontSize: '0.7rem' }}
+                    formatter={(v: number) => `${(v * 100).toFixed(1)}%`} />
+                  <Legend wrapperStyle={{ fontSize: '0.65rem' }} />
+                  <Line type="monotone" dataKey="a_prob" stroke="#22c55e" strokeWidth={2} dot={false} name={p?.team_a || 'Home'} />
+                  <Line type="monotone" dataKey="b_prob" stroke="#ef4444" strokeWidth={2} dot={false} name={p?.team_b || 'Away'} />
+                  <Line type="monotone" dataKey="d_prob" stroke="#94a3b8" strokeWidth={1} strokeDasharray="4 4" dot={false} name="Draw" />
+                </LineChart>
+              </ResponsiveContainer>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginTop: '0.3rem' }}>
+                {momentum.filter(p => p.event).map((p, i) => (
+                  <span key={i} className="momentum-event">{p.event} ({p.minute}')</span>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {narrative && (
+            <motion.div className="granite-box" style={{ marginTop: '1rem' }}
+              initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+              {narrative}
+            </motion.div>
+          )}
+        </motion.div>
       )}
-    </div>
+    </motion.div>
   )
 }

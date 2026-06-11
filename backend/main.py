@@ -15,6 +15,8 @@ from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+import numpy as np
+
 from model import predictor
 from granite import (
     generate_preview, generate_explain, generate_momentum,
@@ -99,6 +101,58 @@ def list_teams():
     names = predictor.get_team_names()
     return {"teams": names, "count": len(names)}
 
+@app.get("/teams/detail")
+def list_teams_detail():
+    if not predictor._loaded:
+        raise HTTPException(status_code=503, detail="Model not loaded")
+    teams = []
+    for name in sorted(predictor.team_stats.keys()):
+        s = predictor.team_stats[name]
+        teams.append({
+            "name": name,
+            "winrate": round(s["winrate"], 4),
+            "goal_avg": round(s["goal_avg"], 4),
+            "form": round(s["recent_form"], 4),
+            "matches": s["matches_played"],
+        })
+    return {"teams": teams, "count": len(teams)}
+
+@app.get("/worldcup/groups")
+def worldcup_groups():
+    top_nations = [
+        "Argentina", "Brazil", "England", "France", "Germany", "Spain",
+        "Portugal", "Netherlands", "Belgium", "Croatia", "Italy", "Uruguay",
+        "Japan", "Korea Republic", "United States", "Mexico",
+    ]
+    groups = {"A": [], "B": [], "C": [], "D": []}
+    for i, team in enumerate(top_nations):
+        g = list(groups.keys())[i % 4]
+        if predictor._loaded and team in predictor.team_stats:
+            s = predictor.team_stats[team]
+            groups[g].append({
+                "name": team,
+                "winrate": round(s["winrate"], 4),
+                "goal_avg": round(s["goal_avg"], 4),
+                "form": round(s["recent_form"], 4),
+                "matches": s["matches_played"],
+                "elo": round(s.get("elo", 1500)),
+            })
+        else:
+            groups[g].append({"name": team, "winrate": 0.5, "goal_avg": 1.5, "form": 0.5, "matches": 500, "elo": 1500})
+    return {"groups": groups, "total_teams": len(top_nations)}
+
+@app.post("/worldcup/predict")
+def worldcup_predict(req: PredictRequest):
+    try:
+        result = predictor.predict(req.team_a, req.team_b, req.is_neutral, req.is_major_tournament)
+        result["round"] = "Group Stage"
+        result["stage"] = "World Cup 2026"
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=f"Model not loaded: {e}")
+
 
 @app.post("/predict")
 def predict_match(req: PredictRequest):
@@ -154,6 +208,66 @@ def explain_decision(req: ExplainRequest):
         "feature_importances": importances,
     }
 
+
+class MomentumSimRequest(BaseModel):
+    team_a: str
+    team_b: str
+    is_neutral: bool = True
+    is_major_tournament: bool = True
+
+@app.post("/simulate/momentum")
+def simulate_momentum(req: MomentumSimRequest):
+    try:
+        result = predictor.predict(req.team_a, req.team_b, req.is_neutral, req.is_major_tournament)
+    except (ValueError, RuntimeError) as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    pa, pd, pb = result["team_a_win_prob"], result["draw_prob"], result["team_b_win_prob"]
+    rng = np.random.RandomState(abs(hash(req.team_a + req.team_b + str(req.is_neutral))) % (2**31))
+    points = []
+    cur_a, cur_d, cur_b = pa, pd, pb
+    event_templates = [
+        "Early possession", "First shot on target", "Yellow card (tactical foul)",
+        "Corner kick danger", "VAR check", "Injury stoppage",
+        "Half-time tactical shift", "Second-half intensity", "Breakaway chance",
+        "Red card (second yellow)", "Defensive reshuffle", "Late substitution",
+        "Free kick opportunity", "Penalty shout waved off", "Goal-line clearance",
+        "Counter-attack", "Set piece prepared", "Long-range effort",
+    ]
+    indices = rng.choice(len(event_templates), size=6, replace=False)
+    events = sorted([
+        {"minute": int(rng.randint(5, 86)), "event": event_templates[i]}
+        for i in indices
+    ], key=lambda x: x["minute"])
+
+    swing = (abs(pa - pb) + 0.05) * 0.06
+    for m in range(0, 91, 5):
+        ev = next((e for e in events if abs(e["minute"] - m) <= 3), None)
+        if ev:
+            direction = 1 if rng.rand() > 0.5 else -1
+            shift = swing * (0.5 + rng.rand() * 0.5)
+            if rng.rand() > 0.3:
+                cur_a = max(0.05, min(0.85, cur_a + direction * shift * 0.7))
+                cur_b = max(0.05, min(0.85, cur_b - direction * shift * 0.3))
+            else:
+                cur_b = max(0.05, min(0.85, cur_b + direction * shift * 0.7))
+                cur_a = max(0.05, min(0.85, cur_a - direction * shift * 0.3))
+            cur_d = max(0.05, 1 - cur_a - cur_b)
+            if cur_d < 0.05: cur_d = 0.05; total = cur_a + cur_b + cur_d; cur_a /= total; cur_b /= total; cur_d /= total
+            points.append({
+                "minute": m, "a_prob": round(cur_a, 4), "d_prob": round(cur_d, 4),
+                "b_prob": round(cur_b, 4), "event": ev["event"],
+            })
+        else:
+            drift = rng.randn() * 0.008
+            cur_a = max(0.05, min(0.85, cur_a + drift))
+            cur_d = max(0.05, min(0.4, cur_d - drift * 0.3))
+            cur_b = max(0.05, min(0.85, 1 - cur_a - cur_d))
+            points.append({
+                "minute": m, "a_prob": round(cur_a, 4), "d_prob": round(cur_d, 4),
+                "b_prob": round(cur_b, 4),
+            })
+    return {"prediction": result, "momentum": points}
 
 @app.post("/explain/momentum")
 def momentum_analysis(req: ExplainRequest):

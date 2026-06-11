@@ -1,16 +1,17 @@
 import { useState, useEffect } from 'react'
-import { TEAMS, TEAM_STATS, teamFlag, apiPost, fmtPct, generateMomentum, type Prediction } from '../api'
+import { motion } from 'framer-motion'
+import { cachedTeams, teamFlag, apiPost, fetchMomentum, fmtPct, generateMomentum, type Prediction, type MomentumPoint } from '../api'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 interface Props { apiAvailable: boolean; setApiAvailable: (v: boolean) => void }
 
-function TeamSelect({ value, onChange, exclude }: { value: string; onChange: (v: string) => void; exclude: string }) {
+function TeamSelect({ value, onChange, exclude, teams }: { value: string; onChange: (v: string) => void; exclude: string; teams: string[] }) {
   const [open, setOpen] = useState(false)
   const [q, setQ] = useState('')
-  const filtered = TEAMS.filter(t => t !== exclude && t.toLowerCase().includes(q.toLowerCase())).slice(0, 30)
+  const filtered = teams.filter(t => t !== exclude && t.toLowerCase().includes(q.toLowerCase())).slice(0, 30)
   return (
     <div style={{ position: 'relative' }}>
-      <input className="team-select-input" placeholder="Select team..."
+      <input className="team-select-input" placeholder="Search 224 teams..."
         value={open ? q : `${teamFlag(value)} ${value}`}
         onFocus={() => { setOpen(true); setQ('') }}
         onBlur={() => setTimeout(() => setOpen(false), 200)}
@@ -30,6 +31,7 @@ function TeamSelect({ value, onChange, exclude }: { value: string; onChange: (v:
 }
 
 export default function WhatIfTab({ apiAvailable, setApiAvailable }: Props) {
+  const [teams, setTeams] = useState<string[]>(['Brazil', 'Argentina', 'England', 'France', 'Germany'])
   const [a, setA] = useState('Brazil')
   const [b, setB] = useState('England')
   const [formA, setFormA] = useState(0.5)
@@ -40,32 +42,27 @@ export default function WhatIfTab({ apiAvailable, setApiAvailable }: Props) {
   const [loading, setLoading] = useState(false)
   const [showMomentum, setShowMomentum] = useState(false)
   const [basePred, setBasePred] = useState<Prediction | null>(null)
-
-  const localFallback = (ta: string, tb: string, n: boolean, m: boolean) => {
-    const sa = TEAM_STATS[ta] || { winrate: 0.5, goal_avg: 1.5, form: 0.5, matches: 500 }
-    const sb = TEAM_STATS[tb] || { winrate: 0.5, goal_avg: 1.5, form: 0.5, matches: 500 }
-    setBasePred({
-      team_a: ta, team_b: tb,
-      team_a_win_prob: 0.4, draw_prob: 0.25, team_b_win_prob: 0.35,
-      is_neutral: n, is_major_tournament: m,
-      stats_a: sa, stats_b: sb,
-    })
-  }
+  const [momentum, setMomentum] = useState<MomentumPoint[]>([])
 
   useEffect(() => {
+    const all = cachedTeams().map(x => x.name)
+    setTeams(all)
+    if (all.length > 0 && !all.includes(a)) setA(all[0])
+    if (all.length > 0 && !all.includes(b)) setB(all[Math.min(1, all.length - 1)])
+  }, [])
+
+  useEffect(() => {
+    if (!a || !b || a === b) return
     if (apiAvailable) {
       apiPost<Prediction>('/predict', { team_a: a, team_b: b, is_neutral: neutral, is_major_tournament: major })
-        .then(r => {
-          if (r) { setBasePred(r); setFormA(r.stats_a.form); setFormB(r.stats_b.form) }
-          else { localFallback(a, b, neutral, major); setApiAvailable(false) }
-        })
+        .then(r => { if (r) { setBasePred(r); setFormA(r.stats_a.form); setFormB(r.stats_b.form) } })
     } else {
-      localFallback(a, b, neutral, major)
+      setBasePred(null)
     }
   }, [a, b])
 
-  const teamFormA = basePred?.stats_a?.form ?? TEAM_STATS[a]?.form ?? 0.5
-  const teamFormB = basePred?.stats_b?.form ?? TEAM_STATS[b]?.form ?? 0.5
+  const teamFormA = basePred?.stats_a?.form ?? 0.5
+  const teamFormB = basePred?.stats_b?.form ?? 0.5
 
   const p = (() => {
     if (!basePred) return { team_a_win_prob: 0.4, draw_prob: 0.25, team_b_win_prob: 0.35 }
@@ -77,37 +74,43 @@ export default function WhatIfTab({ apiAvailable, setApiAvailable }: Props) {
   })()
 
   const run = async () => {
+    if (!a || !b || a === b) return
     setLoading(true)
     setNarrative('')
     if (apiAvailable) {
-      const r = await apiPost<{ narrative: string }>('/explain/momentum', {
-        team_a: a, team_b: b, prob_a: p.team_a_win_prob, prob_b: p.team_b_win_prob,
-      })
-      if (r) setNarrative(r.narrative)
-      else { setApiAvailable(false); setNarrative('') }
+      const [narrRes, momRes] = await Promise.allSettled([
+        apiPost<{ narrative: string }>('/explain/momentum', {
+          team_a: a, team_b: b, prob_a: p.team_a_win_prob, prob_b: p.team_b_win_prob,
+        }),
+        fetchMomentum(a, b, neutral, major),
+      ])
+      if (narrRes.status === 'fulfilled' && narrRes.value?.narrative) setNarrative(narrRes.value.narrative)
+      if (momRes.status === 'fulfilled' && momRes.value?.momentum) setMomentum(momRes.value.momentum)
     }
     setLoading(false)
   }
 
-  const momentum = showMomentum ? generateMomentum(p.team_a_win_prob, p.draw_prob, p.team_b_win_prob) : []
+  const momentumData = showMomentum
+    ? (momentum.length > 0 ? momentum : generateMomentum(p.team_a_win_prob, p.draw_prob, p.team_b_win_prob))
+    : []
 
   return (
-    <div>
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
       <div className="glass-card gold-border">
         <div className="section-heading">
-          <span className="accent">●</span> Match Scenario
+          <span className="accent">●</span> What-If Scenario Simulator
         </div>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1rem', lineHeight: 1.6 }}>
-          Adjust team form, venue, and tournament type. Watch the prediction shift in real time.
+          Adjust team form, venue, and tournament type. The base prediction comes from our real XGBoost model — the form sliders let you explore "what if" scenarios.
         </p>
         <div className="grid-2" style={{ gap: '0.5rem', marginBottom: '1rem' }}>
-          <TeamSelect value={a} onChange={v => { setA(v) }} exclude={b} />
-          <TeamSelect value={b} onChange={v => { setB(v) }} exclude={a} />
+          <TeamSelect value={a} onChange={setA} exclude={b} teams={teams} />
+          <TeamSelect value={b} onChange={setB} exclude={a} teams={teams} />
         </div>
 
         <div style={{ margin: '0.8rem 0' }}>
           <div className="progress-label">
-            <span style={{ color: '#22c55e' }}>{teamFlag(a)} {a} — Recent Form</span>
+            <span style={{ color: '#22c55e' }}>{teamFlag(a)} {a} — Simulated Form</span>
             <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--gold)' }}>{(formA * 100).toFixed(0)}%</span>
           </div>
           <input type="range" min={0.1} max={0.9} step={0.05} value={formA}
@@ -115,7 +118,7 @@ export default function WhatIfTab({ apiAvailable, setApiAvailable }: Props) {
         </div>
         <div style={{ margin: '0.8rem 0' }}>
           <div className="progress-label">
-            <span style={{ color: '#ef4444' }}>{teamFlag(b)} {b} — Recent Form</span>
+            <span style={{ color: '#ef4444' }}>{teamFlag(b)} {b} — Simulated Form</span>
             <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--gold)' }}>{(formB * 100).toFixed(0)}%</span>
           </div>
           <input type="range" min={0.1} max={0.9} step={0.05} value={formB}
@@ -137,18 +140,30 @@ export default function WhatIfTab({ apiAvailable, setApiAvailable }: Props) {
           <div className="scoreboard-team">
             <span className="flag">{teamFlag(a)}</span>
             <div className="name" style={{ fontSize: '0.8rem' }}>{a}</div>
-            <div className="prob" style={{ color: '#22c55e' }}>{(p.team_a_win_prob * 100).toFixed(1)}%</div>
+            <motion.div className="prob" style={{ color: '#22c55e' }}
+              key={`wa-${formA.toFixed(2)}`}
+              initial={{ scale: 0.8 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 200 }}>
+              {(p.team_a_win_prob * 100).toFixed(1)}%
+            </motion.div>
           </div>
           <div className="scoreboard-divider" />
           <div>
             <div style={{ color: '#64748b', fontSize: '0.75rem' }}>Draw</div>
-            <div style={{ color: '#94a3b8', fontSize: '1rem', fontWeight: 700 }}>{(p.draw_prob * 100).toFixed(1)}%</div>
+            <motion.div style={{ color: '#94a3b8', fontSize: '1rem', fontWeight: 700 }}
+              key={`wd-${formA.toFixed(2)}`}
+              initial={{ scale: 0.8 }} animate={{ scale: 1 }}>
+              {(p.draw_prob * 100).toFixed(1)}%
+            </motion.div>
           </div>
           <div className="scoreboard-divider" />
           <div className="scoreboard-team">
             <span className="flag">{teamFlag(b)}</span>
             <div className="name" style={{ fontSize: '0.8rem' }}>{b}</div>
-            <div className="prob" style={{ color: '#ef4444' }}>{(p.team_b_win_prob * 100).toFixed(1)}%</div>
+            <motion.div className="prob" style={{ color: '#ef4444' }}
+              key={`wb-${formB.toFixed(2)}`}
+              initial={{ scale: 0.8 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 200 }}>
+              {(p.team_b_win_prob * 100).toFixed(1)}%
+            </motion.div>
           </div>
         </div>
       </div>
@@ -158,17 +173,18 @@ export default function WhatIfTab({ apiAvailable, setApiAvailable }: Props) {
           {loading ? <><span className="spinner" /> Simulating...</> : '🔄 Analyze What-If'}
         </button>
         <button className="btn-secondary" onClick={() => setShowMomentum(!showMomentum)}>
-          {showMomentum ? 'Hide Timeline' : 'Show Timeline'}
+          {showMomentum ? 'Hide Timeline' : '📈 Timeline'}
         </button>
       </div>
 
-      {showMomentum && (
-        <div className="glass-card" style={{ marginTop: '0.8rem' }}>
-          <div className="section-heading">
+      {showMomentum && momentumData.length > 0 && (
+        <motion.div className="glass-card" style={{ marginTop: '0.8rem', padding: '1rem' }}
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <div className="section-heading" style={{ fontSize: '0.95rem' }}>
             <span className="accent">●</span> Match Momentum Timeline
           </div>
           <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={momentum}>
+            <LineChart data={momentumData}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
               <XAxis dataKey="minute" tick={{ fill: '#5a6a80', fontSize: 10 }} label={{ value: 'Minute', fill: '#5a6a80', fontSize: 10 }} />
               <YAxis domain={[0, 1]} tick={{ fill: '#5a6a80', fontSize: 10 }} tickFormatter={v => `${(v * 100).toFixed(0)}%`} />
@@ -181,14 +197,19 @@ export default function WhatIfTab({ apiAvailable, setApiAvailable }: Props) {
             </LineChart>
           </ResponsiveContainer>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginTop: '0.3rem' }}>
-            {momentum.filter(p => p.event).map((p, i) => (
+            {momentumData.filter(p => p.event).map((p, i) => (
               <span key={i} className="momentum-event">{p.event} ({p.minute}')</span>
             ))}
           </div>
-        </div>
+        </motion.div>
       )}
 
-      {narrative && <div className="granite-box" style={{ marginTop: '1rem' }}>{narrative}</div>}
-    </div>
+      {narrative && (
+        <motion.div className="granite-box" style={{ marginTop: '1rem' }}
+          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+          {narrative}
+        </motion.div>
+      )}
+    </motion.div>
   )
 }

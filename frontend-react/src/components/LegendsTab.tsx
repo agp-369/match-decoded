@@ -1,16 +1,19 @@
-import { useState } from 'react'
-import { TEAMS, TEAM_STATS, fmtPct, teamFlag, apiPost } from '../api'
-import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend, ResponsiveContainer } from 'recharts'
+import { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
+import {
+  RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Tooltip, ResponsiveContainer, Legend,
+} from 'recharts'
+import { cachedTeams, teamFlag, apiPost, type TeamDetail } from '../api'
 
 interface Props { apiAvailable: boolean; setApiAvailable: (v: boolean) => void }
 
-function TeamSelect({ value, onChange, exclude }: { value: string; onChange: (v: string) => void; exclude: string }) {
+function TeamSelect({ value, onChange, exclude, teams }: { value: string; onChange: (v: string) => void; exclude: string; teams: string[] }) {
   const [open, setOpen] = useState(false)
   const [q, setQ] = useState('')
-  const filtered = TEAMS.filter(t => t !== exclude && t.toLowerCase().includes(q.toLowerCase())).slice(0, 30)
+  const filtered = teams.filter(t => t !== exclude && t.toLowerCase().includes(q.toLowerCase())).slice(0, 30)
   return (
     <div style={{ position: 'relative' }}>
-      <input className="team-select-input" placeholder="Select team..."
+      <input className="team-select-input" placeholder="Search 224 teams..."
         value={open ? q : `${teamFlag(value)} ${value}`}
         onFocus={() => { setOpen(true); setQ('') }}
         onBlur={() => setTimeout(() => setOpen(false), 200)}
@@ -30,91 +33,113 @@ function TeamSelect({ value, onChange, exclude }: { value: string; onChange: (v:
 }
 
 export default function LegendsTab({ apiAvailable, setApiAvailable }: Props) {
+  const [teams, setTeams] = useState<string[]>(['Brazil', 'Argentina', 'England', 'France', 'Germany'])
   const [a, setA] = useState('Brazil')
-  const [b, setB] = useState('Germany')
-  const [loading, setLoading] = useState(false)
+  const [b, setB] = useState('Argentina')
   const [narrative, setNarrative] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [statA, setStatA] = useState<TeamDetail | null>(null)
+  const [statB, setStatB] = useState<TeamDetail | null>(null)
 
-  const sa = TEAM_STATS[a]
-  const sb = TEAM_STATS[b]
+  useEffect(() => {
+    const all = cachedTeams().map(x => x.name)
+    setTeams(all)
+    if (all.length > 0 && !all.includes(a)) setA(all[0])
+    if (all.length > 0 && !all.includes(b)) setB(all[1] !== all[0] ? all[1] : all[Math.min(2, all.length - 1)])
+  }, [])
 
-  const radarData = [
-    { stat: 'Win Rate', [a]: +(sa.winrate * 100).toFixed(1), [b]: +(sb.winrate * 100).toFixed(1) },
-    { stat: 'Goals/Game', [a]: +(sa.goal_avg * 50).toFixed(1), [b]: +(sb.goal_avg * 50).toFixed(1) },
-    { stat: 'Recent Form', [a]: +(sa.form * 100).toFixed(1), [b]: +(sb.form * 100).toFixed(1) },
-    { stat: 'Experience', [a]: +Math.min(sa.matches / 20, 100).toFixed(1), [b]: +Math.min(sb.matches / 20, 100).toFixed(1) },
-    { stat: 'Attacking', [a]: +(sa.goal_avg * 20 + sa.winrate * 40).toFixed(1), [b]: +(sb.goal_avg * 20 + sb.winrate * 40).toFixed(1) },
-  ]
+  useEffect(() => {
+    const all = cachedTeams()
+    setStatA(all.find(t => t.name === a) || null)
+    setStatB(all.find(t => t.name === b) || null)
+  }, [a, b])
+
+  const radarData = (() => {
+    if (!statA || !statB) return []
+    const maxWr = Math.max(statA.winrate, statB.winrate, 0.5)
+    const maxGa = Math.max(statA.goal_avg, statB.goal_avg, 1.5)
+    return [
+      { metric: 'Win Rate', [a]: +(statA.winrate / maxWr * 100).toFixed(0), [b]: +(statB.winrate / maxWr * 100).toFixed(0) },
+      { metric: 'Goals/Game', [a]: +(statA.goal_avg / maxGa * 100).toFixed(0), [b]: +(statB.goal_avg / maxGa * 100).toFixed(0) },
+      { metric: 'Recent Form', [a]: +(statA.form * 100).toFixed(0), [b]: +(statB.form * 100).toFixed(0) },
+      { metric: 'Experience', [a]: Math.min(100, +(statA.matches / 10).toFixed(0)), [b]: Math.min(100, +(statB.matches / 10).toFixed(0)) },
+      { metric: 'Attacking', [a]: +Math.min(100, (statA.goal_avg * 40 + (1 - statA.winrate) * 30 + statA.form * 30)).toFixed(0), [b]: +Math.min(100, (statB.goal_avg * 40 + (1 - statB.winrate) * 30 + statB.form * 30)).toFixed(0) },
+    ]
+  })()
 
   const run = async () => {
+    if (!a || !b) return
     setLoading(true)
     setNarrative('')
     if (apiAvailable) {
-      const r = await apiPost<{ narrative: string }>('/explain/legends', { team_a: a, team_b: b })
-      if (r) setNarrative(r.narrative)
-      else { setApiAvailable(false); setNarrative('') }
-    } else {
-      setNarrative('')
+      const r = await apiPost<{ narrative: string }>('/explain/legends', { team_a: a, team_b: b, era_a: 'Modern era', era_b: 'Modern era' })
+      if (r?.narrative) setNarrative(r.narrative)
     }
     setLoading(false)
   }
 
   return (
-    <div>
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
       <div className="glass-card gold-border">
         <div className="section-heading">
-          <span className="accent">●</span> Compare Two Teams
+          <span className="accent">●</span> Cross-Era Legends Matchup
         </div>
-        <div className="grid-2" style={{ gap: '0.5rem' }}>
-          <TeamSelect value={a} onChange={setA} exclude={b} />
-          <TeamSelect value={b} onChange={setB} exclude={a} />
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1rem', lineHeight: 1.6 }}>
+          Compare two teams across five dimensions. Stats pulled from real match data (31,161 international matches, 1990-2026).
+        </p>
+        <div className="grid-2" style={{ gap: '0.5rem', marginBottom: '0.8rem' }}>
+          <TeamSelect value={a} onChange={setA} exclude={b} teams={teams} />
+          <TeamSelect value={b} onChange={setB} exclude={a} teams={teams} />
         </div>
       </div>
 
-      <div className="glass-card" style={{ marginTop: '0.8rem' }}>
-        <div className="section-heading">
-          <span className="accent">●</span> Team Comparison
-        </div>
-        <ResponsiveContainer width="100%" height={260}>
-          <RadarChart data={radarData}>
-            <PolarGrid stroke="rgba(245,158,11,0.15)" />
-            <PolarAngleAxis dataKey="stat" tick={{ fill: '#94a3b8', fontSize: 11 }} />
-            <PolarRadiusAxis angle={90} domain={[0, 100]} tick={{ fill: '#5a6a80', fontSize: 10 }} />
-            <Radar name={a} dataKey={a} stroke="#22c55e" fill="#22c55e" fillOpacity={0.15} strokeWidth={2} />
-            <Radar name={b} dataKey={b} stroke="#ef4444" fill="#ef4444" fillOpacity={0.15} strokeWidth={2} />
-            <Legend wrapperStyle={{ fontSize: '0.75rem' }} />
-          </RadarChart>
-        </ResponsiveContainer>
-      </div>
-
-      <div className="grid-2">
-        <div className="team-card team-a">
-          <span className="team-flag">{teamFlag(a)}</span>
-          <div className="team-name" style={{ fontSize: '1.4rem' }}>{a}</div>
-          <div style={{ marginTop: '0.8rem' }}>
-            <div className="team-stat"><span className="team-stat-label">Win Rate</span><span className="team-stat-value" style={{ fontSize: '1.3rem', color: 'var(--gold-light)' }}>{fmtPct(sa.winrate)}</span></div>
-            <div className="team-stat"><span className="team-stat-label">Goals Per Game</span><span className="team-stat-value">{sa.goal_avg.toFixed(2)}</span></div>
-            <div className="team-stat"><span className="team-stat-label">Total Matches</span><span className="team-stat-value">{sa.matches.toLocaleString()}</span></div>
-            <div className="team-stat"><span className="team-stat-label">Recent Form</span><span className="team-stat-value">{fmtPct(sa.form)}</span></div>
+      {statA && statB && radarData.length > 0 && (
+        <motion.div className="glass-card"
+          initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1 }}>
+          <div className="section-heading"><span className="accent">●</span> Dimensional Comparison</div>
+          <ResponsiveContainer width="100%" height={280}>
+            <RadarChart data={radarData}>
+              <PolarGrid stroke="rgba(240,244,255,0.08)" />
+              <PolarAngleAxis dataKey="metric" tick={{ fill: '#c8d6e5', fontSize: 11 }} />
+              <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: '#5a6a80', fontSize: 9 }} />
+              <Radar name={a} dataKey={a} stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.15} strokeWidth={2} />
+              <Radar name={b} dataKey={b} stroke="#64748b" fill="#64748b" fillOpacity={0.15} strokeWidth={2} />
+              <Tooltip contentStyle={{ background: '#0a0e27', border: '1px solid rgba(245,158,11,0.2)', borderRadius: '8px', fontSize: '0.75rem' }}
+                formatter={(v: number) => `${v}%`} />
+              <Legend wrapperStyle={{ fontSize: '0.75rem' }} />
+            </RadarChart>
+          </ResponsiveContainer>
+          <div className="grid-2" style={{ gap: '0.8rem', marginTop: '0.5rem' }}>
+            <div className="team-card team-a">
+              <span className="team-flag">{teamFlag(a)}</span>
+              <div className="team-name">{a}</div>
+              <div className="team-stat"><span className="team-stat-label">Win Rate</span><span className="team-stat-value">{(statA.winrate * 100).toFixed(1)}%</span></div>
+              <div className="team-stat"><span className="team-stat-label">Goals/Game</span><span className="team-stat-value">{statA.goal_avg.toFixed(2)}</span></div>
+              <div className="team-stat"><span className="team-stat-label">Form</span><span className="team-stat-value">{(statA.form * 100).toFixed(0)}%</span></div>
+              <div className="team-stat"><span className="team-stat-label">Matches</span><span className="team-stat-value">{statA.matches.toLocaleString()}</span></div>
+            </div>
+            <div className="team-card team-b">
+              <span className="team-flag">{teamFlag(b)}</span>
+              <div className="team-name">{b}</div>
+              <div className="team-stat"><span className="team-stat-label">Win Rate</span><span className="team-stat-value">{(statB.winrate * 100).toFixed(1)}%</span></div>
+              <div className="team-stat"><span className="team-stat-label">Goals/Game</span><span className="team-stat-value">{statB.goal_avg.toFixed(2)}</span></div>
+              <div className="team-stat"><span className="team-stat-label">Form</span><span className="team-stat-value">{(statB.form * 100).toFixed(0)}%</span></div>
+              <div className="team-stat"><span className="team-stat-label">Matches</span><span className="team-stat-value">{statB.matches.toLocaleString()}</span></div>
+            </div>
           </div>
-        </div>
-        <div className="team-card team-b">
-          <span className="team-flag">{teamFlag(b)}</span>
-          <div className="team-name" style={{ fontSize: '1.4rem' }}>{b}</div>
-          <div style={{ marginTop: '0.8rem' }}>
-            <div className="team-stat"><span className="team-stat-label">Win Rate</span><span className="team-stat-value" style={{ fontSize: '1.3rem', color: 'var(--gold-light)' }}>{fmtPct(sb.winrate)}</span></div>
-            <div className="team-stat"><span className="team-stat-label">Goals Per Game</span><span className="team-stat-value">{sb.goal_avg.toFixed(2)}</span></div>
-            <div className="team-stat"><span className="team-stat-label">Total Matches</span><span className="team-stat-value">{sb.matches.toLocaleString()}</span></div>
-            <div className="team-stat"><span className="team-stat-label">Recent Form</span><span className="team-stat-value">{fmtPct(sb.form)}</span></div>
-          </div>
-        </div>
-      </div>
+        </motion.div>
+      )}
 
-      <button className="btn-primary" onClick={run} disabled={loading}>
-        {loading ? <><span className="spinner" /> Analyzing...</> : '⚔️ Compare Legends'}
+      <button className="btn-primary" onClick={run} disabled={loading} style={{ marginTop: '0.5rem' }}>
+        {loading ? <><span className="spinner" /> Generating...</> : '🏟️ Compare with Granite'}
       </button>
 
-      {narrative && <div className="granite-box" style={{ marginTop: '1rem' }}>{narrative}</div>}
-    </div>
+      {narrative && (
+        <motion.div className="granite-box" style={{ marginTop: '0.8rem' }}
+          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+          {narrative}
+        </motion.div>
+      )}
+    </motion.div>
   )
 }

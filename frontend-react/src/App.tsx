@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { API, TEAM_STATS } from './api'
+import { motion, AnimatePresence } from 'framer-motion'
+import { fetchHealth, fetchWorldCupGroups, cachedTeams, getAllTeams } from './api'
 import PreMatchTab from './components/PreMatchTab'
 import WhatIfTab from './components/WhatIfTab'
 import LegendsTab from './components/LegendsTab'
@@ -7,114 +8,157 @@ import ExplainTab from './components/ExplainTab'
 import DoclingTab from './components/DoclingTab'
 
 type Tab = 'prematch' | 'whatif' | 'legends' | 'explain' | 'docling'
-const TABS: { key: Tab; label: string }[] = [
-  { key: 'prematch', label: '📊 Pre-Match Preview' },
-  { key: 'whatif', label: '🔄 What-If Simulator' },
-  { key: 'legends', label: '🏆 Legends Matchup' },
-  { key: 'explain', label: '🔍 Decision Trace' },
-  { key: 'docling', label: '📄 Docling Analysis' },
+const TABS: { key: Tab; label: string; icon: string }[] = [
+  { key: 'prematch', label: 'Pre-Match Preview', icon: '📊' },
+  { key: 'whatif', label: 'What-If Simulator', icon: '🔄' },
+  { key: 'legends', label: 'Legends Matchup', icon: '🏆' },
+  { key: 'explain', label: 'Decision Trace', icon: '🔍' },
+  { key: 'docling', label: 'Docling Analysis', icon: '📄' },
 ]
-
-const totalMatches = Object.values(TEAM_STATS).reduce((s, t) => s + t.matches, 0)
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('prematch')
-  const [apiAvailable, setApiAvailableInternal] = useState<boolean | null>(null)
-
-  const setApiAvailable = (v: boolean) => setApiAvailableInternal(v)
+  const [apiAvailable, setApiAvailable] = useState<boolean | null>(null)
+  const [healthData, setHealthData] = useState<{
+    ai_available: boolean; active_provider: string; teams_available: number; ibm_technologies: string[];
+  } | null>(null)
+  const [wcMode, setWcMode] = useState(false)
+  const [teamCount, setTeamCount] = useState(48)
+  const [totalMatches, setTotalMatches] = useState(31161)
 
   useEffect(() => {
+    getAllTeams().then(teams => setTeamCount(teams.length))
+    fetchWorldCupGroups()
     const ctrl = new AbortController()
     const t = setTimeout(() => ctrl.abort(), 3000)
-    fetch(`${API}/health`, { signal: ctrl.signal })
-      .then(r => { clearTimeout(t); setApiAvailableInternal(r.ok) })
-      .catch(() => { clearTimeout(t); setApiAvailableInternal(false) })
+    fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/health`, { signal: ctrl.signal })
+      .then(async r => {
+        clearTimeout(t)
+        if (r.ok) {
+          setApiAvailable(true)
+          const h = await r.json()
+          setHealthData(h)
+          if (h.teams_available) setTeamCount(h.teams_available)
+        } else setApiAvailable(false)
+      })
+      .catch(() => { clearTimeout(t); setApiAvailable(false) })
   }, [])
+
+  const isOnline = apiAvailable === true
+  const aiProvider = healthData?.active_provider || 'standalone'
+  const aiLabel = aiProvider === 'watsonx.ai' ? 'IBM watsonx.ai' : aiProvider === 'HuggingFace Inference API' ? 'HuggingFace Granite' : 'Offline'
 
   return (
     <div className="container">
-      {}
-      <section className="hero">
-        <svg className="hero-logo" viewBox="0 0 100 100" width="56" height="56" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <radialGradient id="ballGrad" cx="35%" cy="35%" r="65%">
-              <stop offset="0%" stopColor="#fef3c7"/>
-              <stop offset="25%" stopColor="#fbbf24"/>
-              <stop offset="65%" stopColor="#f59e0b"/>
-              <stop offset="100%" stopColor="#92400e"/>
-            </radialGradient>
-            <radialGradient id="panelGrad" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="rgba(180,83,9,0.15)"/>
-              <stop offset="100%" stopColor="rgba(180,83,9,0.35)"/>
-            </radialGradient>
-          </defs>
-          <circle cx="50" cy="50" r="48" fill="url(#ballGrad)" stroke="#d97706" strokeWidth="1.2"/>
-          <polygon points="50,30 67.1,42.4 60.6,62.5 39.4,62.5 32.9,42.4" fill="url(#panelGrad)" stroke="#92400e" strokeWidth="1.3"/>
-          <line x1="50" y1="30" x2="50" y2="3" stroke="#92400e" strokeWidth="0.9" strokeLinecap="round"/>
-          <line x1="67.1" y1="42.4" x2="85" y2="22" stroke="#92400e" strokeWidth="0.9" strokeLinecap="round"/>
-          <line x1="60.6" y1="62.5" x2="78" y2="80" stroke="#92400e" strokeWidth="0.9" strokeLinecap="round"/>
-          <line x1="39.4" y1="62.5" x2="22" y2="80" stroke="#92400e" strokeWidth="0.9" strokeLinecap="round"/>
-          <line x1="32.9" y1="42.4" x2="15" y2="22" stroke="#92400e" strokeWidth="0.9" strokeLinecap="round"/>
-          <ellipse cx="35" cy="28" rx="10" ry="6" fill="rgba(255,255,255,0.15)" transform="rotate(-25,35,28)"/>
-        </svg>
-        <div className="hero-badge">World Cup · International Football</div>
-        <h1 className="hero-title">Match Decoded</h1>
-        <p className="hero-subtitle">
-          <strong>Every fan deserves to know why.</strong><br/>
-          <span style={{fontSize:'0.8em', fontWeight:400, opacity:0.8}}>AI-powered match analysis — from the stadium to your screen</span>
-        </p>
-        <div className="tech-row">
-          <span className="tech-badge">✦ IBM Granite</span>
-          <span className="tech-badge">✦ LangChain</span>
-          <span className="tech-badge">✦ IBM Docling</span>
-          <span className="tech-badge">✦ IBM Bob</span>
-        </div>
-        {}
-        <div className="hero-stats">
-          <div className="hero-stat">
-            <div className="hero-stat-value">{totalMatches.toLocaleString()}</div>
-            <div className="hero-stat-label">Matches Analyzed</div>
-          </div>
-          <div className="hero-stat">
-            <div className="hero-stat-value">{Object.keys(TEAM_STATS).length}</div>
-            <div className="hero-stat-label">Teams Tracked</div>
-          </div>
-          <div className="hero-stat">
-            <div className="hero-stat-value">66.6%</div>
-            <div className="hero-stat-label">Model Accuracy (Real Data)</div>
-          </div>
-          <div className="hero-stat">
-            <div className="hero-stat-value" style={{ fontSize: '0.85rem', fontFamily: 'var(--font)' }}>
-              {apiAvailable === null ? '···' : apiAvailable ? '✓ Online' : '✦ Standalone'}
+      <AnimatePresence mode="wait">
+        <motion.div key={tab} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.25 }}>
+          <section className="hero">
+            <svg className="hero-logo" viewBox="0 0 100 100" width="56" height="56" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <radialGradient id="ballGrad" cx="35%" cy="35%" r="65%">
+                  <stop offset="0%" stopColor="#fef3c7"/><stop offset="25%" stopColor="#fbbf24"/>
+                  <stop offset="65%" stopColor="#f59e0b"/><stop offset="100%" stopColor="#92400e"/>
+                </radialGradient>
+                <radialGradient id="panelGrad" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stopColor="rgba(180,83,9,0.15)"/><stop offset="100%" stopColor="rgba(180,83,9,0.35)"/>
+                </radialGradient>
+              </defs>
+              <circle cx="50" cy="50" r="48" fill="url(#ballGrad)" stroke="#d97706" strokeWidth="1.2"/>
+              <polygon points="50,30 67.1,42.4 60.6,62.5 39.4,62.5 32.9,42.4" fill="url(#panelGrad)" stroke="#92400e" strokeWidth="1.3"/>
+              <line x1="50" y1="30" x2="50" y2="3" stroke="#92400e" strokeWidth="0.9" strokeLinecap="round"/>
+              <line x1="67.1" y1="42.4" x2="85" y2="22" stroke="#92400e" strokeWidth="0.9" strokeLinecap="round"/>
+              <line x1="60.6" y1="62.5" x2="78" y2="80" stroke="#92400e" strokeWidth="0.9" strokeLinecap="round"/>
+              <line x1="39.4" y1="62.5" x2="22" y2="80" stroke="#92400e" strokeWidth="0.9" strokeLinecap="round"/>
+              <line x1="32.9" y1="42.4" x2="15" y2="22" stroke="#92400e" strokeWidth="0.9" strokeLinecap="round"/>
+              <ellipse cx="35" cy="28" rx="10" ry="6" fill="rgba(255,255,255,0.15)" transform="rotate(-25,35,28)"/>
+            </svg>
+            <div className="hero-badge">{wcMode ? '⚽ World Cup 2026 · AI Match Analysis' : '🌍 International Football · AI Match Analysis'}</div>
+            <h1 className="hero-title">Match Decoded</h1>
+            <p className="hero-subtitle">
+              <strong>Every fan deserves to know why.</strong><br/>
+              <span style={{fontSize:'0.8em', fontWeight:400, opacity:0.8}}>AI-powered match explainability — IBM Granite · LangChain · Docling</span>
+            </p>
+            <div className="tech-row">
+              <span className={`tech-badge ${healthData?.active_provider === 'watsonx.ai' ? 'active' : ''}`}>
+                {healthData?.active_provider === 'watsonx.ai' ? '●' : '○'} IBM Granite (watsonx.ai)
+              </span>
+              <span className="tech-badge">✦ LangChain</span>
+              <span className="tech-badge">✦ IBM Docling</span>
+              <span className="tech-badge">✦ IBM Bob</span>
             </div>
-            <div className="hero-stat-label">System Status</div>
+            <div className="hero-stats">
+              <motion.div className="hero-stat" whileHover={{ scale: 1.05 }}>
+                <div className="hero-stat-value">{totalMatches.toLocaleString()}</div>
+                <div className="hero-stat-label">Real Matches Analyzed</div>
+              </motion.div>
+              <motion.div className="hero-stat" whileHover={{ scale: 1.05 }}>
+                <div className="hero-stat-value">{teamCount}</div>
+                <div className="hero-stat-label">International Teams</div>
+              </motion.div>
+              <motion.div className="hero-stat" whileHover={{ scale: 1.05 }}>
+                <div className="hero-stat-value">66.6%</div>
+                <div className="hero-stat-label">3-Class Prediction Accuracy</div>
+              </motion.div>
+              <motion.div className="hero-stat" whileHover={{ scale: 1.05 }}>
+                <div className="hero-stat-value" style={{ fontSize: '0.85rem', fontFamily: 'var(--font)' }}>
+                  {apiAvailable === null ? '···' : apiAvailable ? '✓ Online' : '✦ Standalone'}
+                </div>
+                <div className="hero-stat-label">System Status</div>
+              </motion.div>
+            </div>
+          </section>
+
+          <div className="ibm-status-bar">
+            <div className="ibm-status-left">
+              <span className={`ibm-dot ${healthData?.ai_available ? 'green' : 'yellow'}`} />
+              <span className="ibm-provider">AI: <strong>{aiLabel}</strong></span>
+              {healthData?.ai_available && (
+                <span className="ibm-model">ibm/granite-3-8b-instruct</span>
+              )}
+            </div>
+            <div className="ibm-status-right">
+              <span className="ibm-tech">IBM Granite</span>
+              <span className="ibm-tech-sep">·</span>
+              <span className="ibm-tech">LangChain</span>
+              <span className="ibm-tech-sep">·</span>
+              <span className="ibm-tech">Docling</span>
+            </div>
           </div>
-        </div>
-      </section>
 
-      {}
-      <div className="gold-divider">World Cup Match Analysis</div>
+          <div className="gold-divider">
+            {wcMode ? '⚽ World Cup 2026 Match Analysis' : '🌍 International Match Analysis'}
+            <button className="wc-toggle" onClick={() => setWcMode(!wcMode)}>
+              {wcMode ? '🌍 All Teams' : '⚽ World Cup 2026'}
+            </button>
+          </div>
 
-      {}
-      <div className="tabs">
-        {TABS.map(t => (
-          <button key={t.key} className={`tab${tab === t.key ? ' active' : ''}`} onClick={() => setTab(t.key)}>{t.label}</button>
-        ))}
-      </div>
+          <div className="tabs">
+            {TABS.map(t => (
+              <motion.button
+                key={t.key}
+                className={`tab${tab === t.key ? ' active' : ''}`}
+                onClick={() => setTab(t.key)}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                {t.icon} {t.label}
+              </motion.button>
+            ))}
+          </div>
 
-      {}
-      {tab === 'prematch' && <PreMatchTab apiAvailable={apiAvailable === true} setApiAvailable={setApiAvailable} />}
-      {tab === 'whatif' && <WhatIfTab apiAvailable={apiAvailable === true} setApiAvailable={setApiAvailable} />}
-      {tab === 'legends' && <LegendsTab apiAvailable={apiAvailable === true} setApiAvailable={setApiAvailable} />}
-      {tab === 'explain' && <ExplainTab apiAvailable={apiAvailable === true} setApiAvailable={setApiAvailable} />}
-      {tab === 'docling' && <DoclingTab />}
+          {tab === 'prematch' && <PreMatchTab apiAvailable={isOnline} setApiAvailable={setApiAvailable} wcMode={wcMode} />}
+          {tab === 'whatif' && <WhatIfTab apiAvailable={isOnline} setApiAvailable={setApiAvailable} />}
+          {tab === 'legends' && <LegendsTab apiAvailable={isOnline} setApiAvailable={setApiAvailable} />}
+          {tab === 'explain' && <ExplainTab apiAvailable={isOnline} setApiAvailable={setApiAvailable} />}
+          {tab === 'docling' && <DoclingTab />}
 
-      {}
-      <footer className="footer">
-        Match Decoded <span className="dot">·</span> IBM AI Builders Challenge
-        <span className="dot">·</span> Built with IBM Granite 3.1-2B
-        <span className="dot">·</span> <a href="https://github.com/agp-369/match-decoded" target="_blank" rel="noopener">GitHub</a>
-      </footer>
+          <footer className="footer">
+            Match Decoded <span className="dot">·</span> IBM AI Builders Challenge
+            <span className="dot">·</span> Built with IBM Granite 3-8B
+            <span className="dot">·</span> <a href="https://github.com/agp-369/match-decoded" target="_blank" rel="noopener">GitHub</a>
+          </footer>
+        </motion.div>
+      </AnimatePresence>
     </div>
   )
 }
