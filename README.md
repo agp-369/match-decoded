@@ -27,17 +27,15 @@ license: apache-2.0
 
 ---
 
-## 📺 For Our Judge: The Next Chapter of IBM's Sports AI
+## 📺 Why Match Decoded?
 
-This project was built with a single question in mind: **What comes after Wimbledon AI Highlights?**
+This project sits at the intersection of everything IBM Sports & Entertainment stands for:
 
-IBM transformed the fan experience at Wimbledon — using AI to identify match-defining moments and serve them to fans instantly. At the US Open, IBM's cognitive concierge helped 700,000+ fans navigate the tournament. And with ESPN Fantasy Football, IBM brought generative AI insights directly into the lineup decisions of millions.
+**🧠 Innovation with purpose** — What happens when you take IBM's Emmy-winning sports AI (Wimbledon Highlights, US Open commentary, ESPN Fantasy Football) and ask: *"What comes next?"* The answer: not just showing *what* happened, but explaining *why* it happened. Raw data → Granite narrative → fan understanding.
 
-**Match Decoded is the next logical step: explaining *why* those moments matter.**
+**🌍 Social impact through access** — Football intelligence has always been locked inside broadcast production trucks and analytics departments. Match Decoded gives it away for **free, on any device, in any country, with no login required.** A fan in Lagos, São Paulo, or Jakarta gets the same AI analyst as a network broadcaster. This is what democratizing sports knowledge looks like.
 
-It's built in the same spirit as the work Elizabeth O'Brien and the IBM Sports & Entertainment Partnerships team have been pioneering — using IBM Granite to turn raw data into stories that fans can actually understand. Not a black-box prediction. An AI analyst that explains its reasoning, in plain English, so every fan walks away smarter.
-
-> *"From 'what happened' to 'why it happened' — that's the next frontier of sports AI."*
+**⚡ Innovation that serves people** — Not a black-box prediction. A transparent AI analyst that explains its reasoning in plain English. Every prediction is traceable. Every narrative is generated live by IBM Granite. Designed for the fan, not the data scientist.
 
 ---
 
@@ -163,6 +161,22 @@ Every prediction is fully transparent. View 8 feature importance bars, Granite's
 | **The Masters (IBM Partner)** | "Why the leaderboard shifted" — Granite analysis of tournament dynamics |
 | **Premier League** | Match-by-match fan education — helping global fans understand tactical narratives |
 | **Betting Operators** | Explainable odds — "Why the model disagrees with the market" for responsible gambling |
+
+---
+
+## 🌍 Social Impact — Knowledge Is a Right, Not a Privilege
+
+Pamela Jacob leads IBM's North America CSR — SkillsBuild, AI education, and using technology as a force for equity. Match Decoded was built in that same spirit.
+
+| CSR Principle | How Match Decoded Delivers |
+|---|---|
+| **Democratizing access** | Free, no login, no paywall. Works on any phone or browser — a fan in any country gets the same AI analyst as a broadcaster |
+| **Education through AI** | Teaches fans to think critically about match analysis — "Why is Argentina favoured?" becomes a learning moment about form, history, and context |
+| **Responsible, transparent AI** | Every prediction comes with a full decision trace — 8 feature importance bars + Granite's natural language reasoning. No black box. The fan can verify the AI's thinking |
+| **Global reach** | Football is the world's game (3.5B fans). Web app means zero installation. Works in low-bandwidth environments |
+| **Built with IBM SkillsBuild mindset** | The same open, accessible philosophy — take powerful technology and put it directly into the hands of people who need it most |
+
+> *"The goal isn't to predict scores. It's to help a billion fans understand the game they love — starting with the question: WHY."*
 
 ---
 
