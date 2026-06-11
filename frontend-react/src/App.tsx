@@ -34,6 +34,7 @@ export default function App() {
       {}
       <section className="hero">
         <span className="hero-icon">⚽</span>
+        <span className="hero-jp">マッチデコード</span>
         <h1 className="hero-title">Match Decoded</h1>
         <p className="hero-subtitle">
           <strong>Understand the game.</strong> Explain the moments.
@@ -59,13 +60,16 @@ export default function App() {
             <div className="hero-stat-label">Model Accuracy</div>
           </div>
           <div className="hero-stat">
-            <div className="hero-stat-value" style={{ fontSize: '0.9rem', fontFamily: 'var(--font)' }}>
+            <div className="hero-stat-value" style={{ fontSize: '0.85rem', fontFamily: 'var(--font)' }}>
               {apiAvailable === null ? '···' : apiAvailable ? '✓ Online' : '✦ Standalone'}
             </div>
             <div className="hero-stat-label">System Status</div>
           </div>
         </div>
       </section>
+
+      {}
+      <div className="jp-divider">分析 開始</div>
 
       {}
       <div className="tabs">
@@ -83,7 +87,8 @@ export default function App() {
 
       {}
       <footer className="footer">
-        Match Decoded <span className="dot">·</span> IBM AI Builders Challenge
+        Match Decoded <span className="dot">·</span> マッチデコード
+        <span className="dot">·</span> IBM AI Builders Challenge
         <span className="dot">·</span> Built with IBM Granite 3.1-2B
         <span className="dot">·</span> <a href="https://github.com/agp-369/match-decoded" target="_blank" rel="noopener">GitHub</a>
       </footer>
