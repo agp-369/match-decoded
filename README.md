@@ -10,9 +10,9 @@ pinned: false
 license: apache-2.0
 ---
 
-# ⚽ Match Decoded
+# 🏆 Match Decoded
 
-### AI-powered football match explainability — powered by IBM Granite + LangChain + Docling
+### AI-powered World Cup match explainability — powered by IBM Granite + LangChain + Docling
 
 **IBM AI Builders Challenge 2026 · June Football Challenge**
 
@@ -27,13 +27,13 @@ license: apache-2.0
 
 ## 🏟️ The Problem
 
-**49,000 international football matches. 215 teams. 154 years of data.**
+**It's World Cup semi-final day. Argentina vs Brazil. 80,000 fans in the stadium. A billion watching worldwide.**
 
-And yet, when a fan watches a match, they hear commentary about *what* happened — but rarely *why*.
+The pundits argue. The stats flash on screen. But the average fan still asks one question:
 
-> *"Brazil lost to Argentina. But was it because of form? Venue? Historical matchup? Tournament pressure?"*
+> *"WHY is Argentina favoured? Is it Messi's form? Brazil's historical edge? The venue? Tournament pressure?"*
 
-Fans deserve to understand the invisible forces shaping every match. Teams have million-dollar analytics departments. Fans have bias and guesswork. **Match Decoded bridges that gap.**
+For 154 years and 49,000 international matches, that answer lived inside analytics departments that fans never had access to. **Match Decoded is the first platform that gives every fan an AI analyst — powered by IBM Granite — to decode any match, in plain English, in seconds.**
 
 ---
 
@@ -50,7 +50,9 @@ Match Decoded is an AI-powered football explainability platform that transforms 
 
 ### Key Insight: Explainability Over Prediction
 
-This is NOT a score predictor. This is a **match decoder** — an AI that explains *why* outcomes are likely, so every fan understands the game at a deeper level.
+This is NOT a score predictor. It's a **match decoder** — an AI analyst that explains *why* outcomes are likely. No charts. No code. Pick two teams, click analyze, get a Granite-generated breakdown anyone can understand.
+
+> *"Finally, a football tool for fans, not data scientists."*
 
 ---
 
@@ -106,30 +108,42 @@ Every prediction is fully transparent. View:
 ## 🏗️ Architecture
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                  Streamlit Frontend                  │
-│  ┌──────────┐ ┌──────────┐ ┌────────┐ ┌──────────┐ │
-│  │  Preview  │ │What-If   │ │Legends │ │ Docling  │ │
-│  │           │ │Simulator │ │Matchup │ │Analyzer  │ │
-│  └─────┬─────┘ └────┬─────┘ └───┬────┘ └────┬─────┘ │
-└────────┼─────────────┼───────────┼───────────┼───────┘
-         │             │           │           │
-         ▼             ▼           ▼           ▼
-┌─────────────────────────────────────────────────────┐
-│                  FastAPI Backend                      │
-│  ┌──────────┐ ┌──────────┐ ┌────────┐ ┌──────────┐ │
-│  │/predict  │ │/explain/ │ │/explain│ │/docling/ │ │
-│  │          │ │preview   │ │/legends│ │analyze   │ │
-│  │decision  │ │momentum  │ │        │ │          │ │
-│  └─────┬────┘ └────┬─────┘ └───┬────┘ └────┬─────┘ │
-└────────┼────────────┼───────────┼───────────┼───────┘
-         │            │           │           │
-         ▼            ▼           ▼           ▼
-┌────────┐   ┌───────────┐  ┌────────┐  ┌──────────┐
-│ Random │   │  LangChain│  │ IBM    │  │ IBM      │
-│ Forest │   │ Prompt    │  │ Granite│  │ Docling  │
-│ Model  │   │ Templates │  │via HF  │  │ PDFParser│
-└────────┘   └───────────┘  └────────┘  └──────────┘
+                          Users
+                  ┌───────┴───────┐
+                  ▼               ▼
+    ┌────────────────────┐  ┌──────────────┐
+    │  React Frontend    │  │ Streamlit    │
+    │  (Vercel · Prod)   │  │ (HF Spaces)  │
+    │  • Pre-Match       │  │ • Same tabs  │
+    │  • What-If         │  │ • Standalone │
+    │  • Legends         │  │ • No backend │
+    │  • Decision Trace  │  │   required   │
+    │  • Docling Upload  │  │              │
+    └────────┬───────────┘  └──────┬───────┘
+             │                     │
+             ▼                     ▼
+    ┌─────────────────────────────────────┐
+    │          FastAPI Backend             │
+    │  ┌────────┐ ┌─────────┐ ┌─────────┐ │
+    │  │/predict│ │/explain │ │/docling │ │
+    │  │        │ │/preview │ │/analyze │ │
+    │  │        │ │/decision│ │         │ │
+    │  │        │ │/momentum│ │         │ │
+    │  │        │ │/legends │ │         │ │
+    │  └───┬────┘ └────┬────┘ └────┬────┘ │
+    └──────┼───────────┼───────────┼───────┘
+           ▼           ▼           ▼
+    ┌────────┐ ┌───────────┐ ┌──────────┐
+    │ Random │ │ LangChain │ │ IBM      │
+    │ Forest │ │ Prompt    │ │ Docling  │
+    │ Model  │ │ Templates │ │ Parser   │
+    └────────┘ └─────┬─────┘ └──────────┘
+                     ▼
+              ┌────────────┐
+              │ IBM Granite│
+              │ 3.1-2B     │
+              │ via HF API │
+              └────────────┘
 ```
 
 ---
@@ -137,14 +151,14 @@ Every prediction is fully transparent. View:
 ## 🎯 Judging Criteria Alignment
 
 | Criterion | How Match Decoded Addresses It |
-|---|---|
-| **Technical Execution** | 5 FastAPI endpoints, Random Forest ML model (55.8% acc), LangChain prompt chains, Docling PDF parsing, Streamlit UI with Plotly charts |
-| **Innovation** | Explainability-first approach — not just prediction but WHY. Cross-era Legends Matchup. What-if simulator with AI delta analysis. Docling match report analysis |
-| **Challenge Fit** | Direct football theme. "Understand the game. Explain the moments." — every feature is about fan understanding, not pure prediction |
-| **Feasibility** | Live prototype with 215 teams, 49K matches, 5 working endpoints. Runs on free HuggingFace Spaces. Zero credit card required |
-| **Use of IBM Tech** | 4 IBM technologies: **Granite** (LLM), **LangChain** (prompts), **Docling** (PDF parsing), **Bob** (development assistance) |
-| **User Experience** | Polished glassmorphic UI, mobile-friendly, 4 interactive tabs, real-time animations, stadium-themed design |
-| **Explainability** | Fully traceable predictions. Feature importance displayed. Granite explains every decision in plain language. No black box |
+|---|---|---|
+| **Technical Execution** | 2 frontends (React + Streamlit), 5 FastAPI endpoints, Random Forest ML model (55.8% acc, 200 trees), LangChain prompt chains with 5 templates, Docling PDF parser, Vercel + HF Spaces deployment |
+| **Innovation** | Explainability-first — not just prediction but Granite-generated WHY. Cross-era Legends Matchup. What-if simulator with AI delta analysis. Docling match report analysis. Interactive scoreboard visualisation |
+| **Challenge Fit** | Direct football theme aligned with June challenge. "Understand the game. Explain the moments." — every feature serves match understanding, not pure prediction |
+| **Feasibility** | Live at 3 URLs: React on Vercel, Streamlit on HF Spaces, GitHub open source. Zero cost to run. 10 teams available instantly. Works fully offline in standalone mode |
+| **Use of IBM Tech** | 4 IBM technologies: **Granite 3.1-2B** (LLM via HF Inference API), **LangChain** (prompt engineering), **Docling** (PDF parsing), **Bob** (AI code assistant) |
+| **User Experience** | Premium football broadcast UI with stadium background. Gold/World Cup trophy theme. Scoreboard-style displays. Glassmorphic cards. Team flags. Mobile responsive. 4.5-click analysis flow |
+| **Explainability** | Every prediction is fully traceable: 8 feature importance bars, Granite natural language explanation, model accuracy displayed. No black box. Designed for non-technical fans |
 
 ---
 
@@ -186,21 +200,28 @@ API_URL=http://localhost:8000         # Backend URL (auto-detected)
 
 ```
 match-decoded/
-├── backend/
-│   ├── main.py              # FastAPI (5 endpoints)
-│   ├── model.py             # Random Forest wrapper
+├── backend/                  # FastAPI backend
+│   ├── main.py              # 5 API endpoints
+│   ├── model.py             # Random Forest wrapper (55.8% acc)
 │   ├── granite.py           # IBM Granite + LangChain integration
-│   ├── langchain_prompts.py # LangChain prompt templates
-│   ├── docling_parser.py    # IBM Docling PDF parsing
-│   └── requirements.txt     # Backend deps
-├── frontend/
-│   ├── app.py               # Streamlit UI (4 tabs)
-│   └── requirements.txt     # Frontend deps
+│   ├── langchain_prompts.py # LangChain prompt templates (5 types)
+│   ├── docling_parser.py    # IBM Docling PDF match report parser
+│   └── requirements.txt
+├── frontend/                 # Streamlit app (HF Spaces)
+│   ├── app.py               # 5 tabs, standalone mode
+│   └── requirements.txt
+├── frontend-react/           # React app (Vercel · production)
+│   ├── src/
+│   │   ├── App.tsx          # Hero + tabs + stats
+│   │   ├── api.ts           # Prediction logic + team data
+│   │   ├── components/      # 5 tab components
+│   │   └── index.css        # Premium gold/navy theme
+│   ├── vercel.json          # Vercel deployment config
+│   └── package.json
 ├── models/
 │   ├── match_predictor.pkl  # Trained Random Forest
 │   └── team_data.pkl        # Team statistics
-├── requirements.txt         # Combined deps
-├── .huggingface.yaml        # HuggingFace Spaces config
+├── requirements.txt
 └── README.md
 ```
 
@@ -208,26 +229,41 @@ match-decoded/
 
 ## 🎬 Demo Video
 
-### Pitch Script
+### Pitch Script (World Cup Context)
 
 ```
-"Every football fan has watched a match and wondered: WHY did they win?
+"It's World Cup semi-final day. Argentina vs Brazil.
 
-Match Decoded answers that question.
+A billion people are watching. But most of them don't know
+WHY the favourite is the favourite.
 
-Powered by IBM Granite, LangChain, Docling, and built with IBM Bob,
-Match Decoded analyzes 49,000 international matches to explain
-the invisible forces shaping every game.
+That's where Match Decoded comes in.
 
-Select any two teams. Granite delivers a tactical preview explaining
-why one has the edge. Change the venue — watch the prediction shift.
-Compare legends across eras — Granite settles the debate.
-Upload a match report — Docling extracts the tactics, Granite analyzes them.
+[OPEN APP — select Brazil vs Argentina, click Analyze]
 
-Teams have million-dollar analytics. Fans have guesswork.
-Match Decoded bridges that gap.
+I pick Brazil and Argentina. One click. And IBM Granite
+delivers a full tactical preview — explaining exactly why
+the model predicts what it does, in plain English.
 
-Built with IBM Granite. LangChain. Docling. IBM Bob.
+[Show What-If Simulator — toggle Neutral Venue]
+
+What if it's a neutral venue? Watch the prediction shift.
+Granite explains the delta — what changed and why.
+
+[Show Legends Matchup — Brazil vs Germany]
+
+Compare Brazil vs Germany across eras. Granite settles
+the debate with statistical context and football storytelling.
+
+[Show Decision Trace]
+
+Every prediction is fully transparent. View the 8 factors
+that drove the decision. No black box.
+
+For 154 years, that insight lived inside analytics departments.
+Now every fan has an AI analyst in their pocket.
+
+Powered by IBM Granite. LangChain. Docling. IBM Bob.
 
 Match Decoded — Every fan deserves to know WHY."
 ```

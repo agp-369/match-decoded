@@ -33,8 +33,8 @@ export default function App() {
     <div className="container">
       {}
       <section className="hero">
-        <span className="hero-icon">⚽</span>
-        <span className="hero-jp">マッチデコード</span>
+        <span className="hero-icon">🏆</span>
+        <div className="hero-badge">World Cup · International Football</div>
         <h1 className="hero-title">Match Decoded</h1>
         <p className="hero-subtitle">
           <strong>Understand the game.</strong> Explain the moments.
@@ -69,7 +69,7 @@ export default function App() {
       </section>
 
       {}
-      <div className="jp-divider">分析 開始</div>
+      <div className="gold-divider">World Cup Match Analysis</div>
 
       {}
       <div className="tabs">
@@ -87,8 +87,7 @@ export default function App() {
 
       {}
       <footer className="footer">
-        Match Decoded <span className="dot">·</span> マッチデコード
-        <span className="dot">·</span> IBM AI Builders Challenge
+        Match Decoded <span className="dot">·</span> IBM AI Builders Challenge
         <span className="dot">·</span> Built with IBM Granite 3.1-2B
         <span className="dot">·</span> <a href="https://github.com/agp-369/match-decoded" target="_blank" rel="noopener">GitHub</a>
       </footer>
