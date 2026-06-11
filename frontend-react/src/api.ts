@@ -84,6 +84,12 @@ export const TEAM_STATS: Record<string, TeamStats> = {
   Wales: { winrate: 0.375, goal_avg: 1.32, form: 0.40, matches: 612 },
 };
 
+export const TEAMS = Object.keys(TEAM_STATS);
+
+export function teamFlag(name: string): string {
+  return TEAM_FLAGS[name] || '⚽';
+}
+
 const H2H_RECORDS: Record<string, Record<string, H2HRecord>> = {
   Argentina: {
     Brazil: { team_a: 'Argentina', team_b: 'Brazil', a_wins: 38, b_wins: 43, draws: 27, total: 108 },
@@ -152,57 +158,34 @@ const H2H_RECORDS: Record<string, Record<string, H2HRecord>> = {
   },
 };
 
-export const TEAMS = Object.keys(TEAM_STATS);
-
-export function teamFlag(name: string): string {
-  return TEAM_FLAGS[name] || '⚽';
-}
-
-export function distance(a: string, b: string): string {
-  const city = { Argentina: 'Buenos Aires', Brazil: 'Rio de Janeiro', England: 'London', France: 'Paris', Germany: 'Berlin', Italy: 'Rome', Spain: 'Madrid', Netherlands: 'Amsterdam', Portugal: 'Lisbon', Uruguay: 'Montevideo', UnitedStates: 'New York', Mexico: 'Mexico City', Japan: 'Tokyo', KoreaRepublic: 'Seoul', Australia: 'Sydney', Nigeria: 'Lagos', Morocco: 'Rabat', Senegal: 'Dakar', Ghana: 'Accra', Cameroon: 'Yaounde', IvoryCoast: 'Abidjan', Egypt: 'Cairo', Tunisia: 'Tunis', SaudiArabia: 'Riyadh', Iran: 'Tehran', Canada: 'Toronto', Croatia: 'Zagreb', Denmark: 'Copenhagen', Sweden: 'Stockholm', Norway: 'Oslo', Switzerland: 'Bern', Belgium: 'Brussels', Austria: 'Vienna', Poland: 'Warsaw', Turkey: 'Istanbul', Ukraine: 'Kyiv', Russia: 'Moscow', Scotland: 'Glasgow', Wales: 'Cardiff', Greece: 'Athens', Romania: 'Bucharest', Hungary: 'Budapest', CzechRepublic: 'Prague', Slovakia: 'Bratislava', Serbia: 'Belgrade', Slovenia: 'Ljubljana', Iceland: 'Reykjavik', Peru: 'Lima', Chile: 'Santiago', Colombia: 'Bogota', Ecuador: 'Quito', Paraguay: 'Asuncion', CostaRica: 'San Jose', Jamaica: 'Kingston', SouthAfrica: 'Cape Town', };
-  const ca = city[a as keyof typeof city];
-  const cb = city[b as keyof typeof city];
-  if (!ca || !cb) return '';
-  const d = Math.round(Math.random() * 8000 + 500);
-  return d > 10000 ? `${(d / 1000).toFixed(0)},000 km` : `${d.toLocaleString()} km`;
-}
-
 export function getH2H(a: string, b: string): H2HRecord | null {
   const dir = H2H_RECORDS[a]?.[b] || H2H_RECORDS[b]?.[a];
   if (dir) return dir;
   return null;
 }
 
-export const FEATURES: FeatureImportance[] = [
-  { name: 'team_b_winrate', importance: 0.205 },
-  { name: 'team_a_winrate', importance: 0.200 },
-  { name: 'team_b_goal_avg', importance: 0.182 },
-  { name: 'team_a_goal_avg', importance: 0.178 },
-  { name: 'team_b_recent_form', importance: 0.078 },
-  { name: 'team_a_recent_form', importance: 0.076 },
-  { name: 'is_neutral', importance: 0.032 },
-  { name: 'is_major_tournament', importance: 0.030 },
-  { name: 'team_a_defense', importance: 0.010 },
-  { name: 'team_b_defense', importance: 0.009 },
-];
-
-export async function apiPost<T>(endpoint: string, body: unknown): Promise<T | null> {
-  try {
-    const r = await fetch(`${API}${endpoint}`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
-    });
-    if (!r.ok) return null;
-    return r.json();
-  } catch { return null; }
-}
-
-export async function fetchTeams(): Promise<string[] | null> {
-  try {
-    const r = await fetch(`${API}/teams`);
-    if (!r.ok) return null;
-    const data = await r.json();
-    return data.teams || null;
-  } catch { return null; }
+export function distance(a: string, b: string): string {
+  const city: Record<string, string> = {
+    Argentina: 'Buenos Aires', Brazil: 'Rio de Janeiro', England: 'London', France: 'Paris',
+    Germany: 'Berlin', Italy: 'Rome', Spain: 'Madrid', Netherlands: 'Amsterdam', Portugal: 'Lisbon',
+    Uruguay: 'Montevideo', UnitedStates: 'New York', Mexico: 'Mexico City', Japan: 'Tokyo',
+    KoreaRepublic: 'Seoul', Australia: 'Sydney', Nigeria: 'Lagos', Morocco: 'Rabat',
+    Senegal: 'Dakar', Ghana: 'Accra', Cameroon: 'Yaounde', IvoryCoast: 'Abidjan',
+    Egypt: 'Cairo', Tunisia: 'Tunis', SaudiArabia: 'Riyadh', Iran: 'Tehran',
+    Canada: 'Toronto', Croatia: 'Zagreb', Denmark: 'Copenhagen', Sweden: 'Stockholm',
+    Norway: 'Oslo', Switzerland: 'Bern', Belgium: 'Brussels', Austria: 'Vienna',
+    Poland: 'Warsaw', Turkey: 'Istanbul', Ukraine: 'Kyiv', Russia: 'Moscow',
+    Scotland: 'Glasgow', Wales: 'Cardiff', Greece: 'Athens', Romania: 'Bucharest',
+    Hungary: 'Budapest', CzechRepublic: 'Prague', Slovakia: 'Bratislava', Serbia: 'Belgrade',
+    Slovenia: 'Ljubljana', Iceland: 'Reykjavik', Peru: 'Lima', Chile: 'Santiago',
+    Colombia: 'Bogota', Ecuador: 'Quito', Paraguay: 'Asuncion', CostaRica: 'San Jose',
+    Jamaica: 'Kingston', SouthAfrica: 'Cape Town',
+  };
+  const ca = city[a as keyof typeof city];
+  const cb = city[b as keyof typeof city];
+  if (!ca || !cb) return '';
+  const d = Math.round(Math.random() * 8000 + 500);
+  return d > 10000 ? `${(d / 1000).toFixed(0)},000 km` : `${d.toLocaleString()} km`;
 }
 
 export function predictLocal(a: string, b: string, neutral: boolean, major: boolean): Prediction {
@@ -245,28 +228,28 @@ export function predictLocalWithForm(a: string, b: string, neutral: boolean, maj
 
 export function fmtPct(v: number) { return `${(v * 100).toFixed(1)}%`; }
 
-export function previewFallback(a: string, b: string, pa: number, pd: number, pb: number): string {
-  const edge = pa > pb ? a : b;
-  return `${edge} enters as the favourite with a ${fmtPct(Math.max(pa, pb))} win probability. ${a} sits at ${fmtPct(pa)} while ${b} holds ${fmtPct(pb)}. The draw probability is ${fmtPct(pd)}.`;
+export async function apiPost<T>(endpoint: string, body: unknown): Promise<T | null> {
+  try {
+    const r = await fetch(`${API}${endpoint}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    });
+    if (!r.ok) return null;
+    return r.json();
+  } catch { return null; }
 }
 
-export function momentumFallback(a: string, b: string, pa: number, pb: number): string {
-  const diff = Math.abs(pa - pb) * 100;
-  return `With ${a} at ${fmtPct(pa)} and ${b} at ${fmtPct(pb)}, this match shapes up as ${diff < 10 ? 'a tightly contested battle where momentum swings will be decisive' : 'a fixture with a clear favourite, though football thrives on surprises'}. Key momentum shifts often arrive through an early goal, a tactical substitution, or a sending-off.`;
-}
-
-export function explainFallback(): string {
-  return `The prediction is driven primarily by the teams' historical win rates and goal-scoring averages. The Random Forest model weighs 10 factors including recent form, venue, and tournament stage. Model accuracy: 55.8% on unseen test data (beating the 47.2% always-predict-favourite baseline).`;
-}
-
-export function legendsFallback(a: string, b: string, sa: TeamStats, sb: TeamStats): string {
-  return `${a} (${fmtPct(sa.winrate)} win rate, ${sa.goal_avg.toFixed(2)} goals/game across ${sa.matches} matches) versus ${b} (${fmtPct(sb.winrate)} win rate, ${sb.goal_avg.toFixed(2)} goals/game across ${sb.matches} matches). While eras differ, the statistical edge belongs to ${sa.winrate > sb.winrate ? a : b}.`;
+export async function fetchTeams(): Promise<string[] | null> {
+  try {
+    const r = await fetch(`${API}/teams`);
+    if (!r.ok) return null;
+    const data = await r.json();
+    return data.teams || null;
+  } catch { return null; }
 }
 
 export function generateMomentum(aProb: number, dProb: number, bProb: number): MomentumPoint[] {
   const points: MomentumPoint[] = [];
   const events: { min: number; label: string }[] = [];
-  const evt = Math.floor(Math.random() * 8);
   const opts = ['Early goal!', 'Yellow card', 'Tactical substitution', 'Penalty shout', 'Injury stoppage', 'Goal disallowed (VAR)', 'Red card!', 'Half-time adjustment'];
   const opts2 = ['Counter-attack', 'Free kick danger', 'Corner pressure', 'Long-range shot', 'Defensive reshuffle', 'Captain injured', 'Formation change', 'Set piece goal!'];
   for (let i = 0; i < 3; i++) {

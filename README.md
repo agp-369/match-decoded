@@ -13,34 +13,32 @@ license: apache-2.0
 # 🏆 Match Decoded
 
 ### AI-powered football explainability — from the stadium to your screen
-### Powered by IBM Granite + LangChain + Docling + IBM Bob
+### Powered by IBM Granite (watsonx.ai) + LangChain + Docling + IBM Bob
 
 **IBM AI Builders Challenge 2026 · June Football Challenge**
 
-[![IBM Granite](https://img.shields.io/badge/IBM-Granite-00b4ff)](https://ibm.com/granite)
+[![IBM watsonx.ai](https://img.shields.io/badge/IBM-watsonx.ai-00b4ff)](https://cloud.ibm.com)
+[![IBM Granite](https://img.shields.io/badge/IBM-Granite_3--8B-00b4ff)](https://ibm.com/granite)
 [![LangChain](https://img.shields.io/badge/LangChain-IBM-00b4ff)](https://python.langchain.com/)
 [![Docling](https://img.shields.io/badge/IBM-Docling-00b4ff)](https://github.com/IBM/docling)
 [![Built with IBM Bob](https://img.shields.io/badge/Built%20with-IBM%20Bob-00b4ff)](https://bob.ibm.com/)
-[![React](https://img.shields.io/badge/React-19-00b4ff)](https://react.dev)
-[![Vercel](https://img.shields.io/badge/Vercel-Deployed-00b4ff)](https://vercel.com)
-[![Emmy](https://img.shields.io/badge/Inspired%20by-Emmy%20Award%20Winner-00b4ff)](https://www.ibm.com/sports)
+[![XGBoost](https://img.shields.io/badge/XGBoost-66.6%25-22c55e)](https://xgboost.readthedocs.io/)
+[![Tests](https://img.shields.io/badge/Tests-22%20passing-22c55e)](https://github.com/)
+[![CI/CD](https://img.shields.io/badge/CI/CD-GitHub%20Actions-00b4ff)](https://github.com/)
 
 ---
 
 ## 📺 Why Match Decoded?
 
-This project sits at the intersection of everything IBM Sports & Entertainment stands for:
+**🧠 Innovation with purpose** — Not just showing *what* happened, but explaining *why* it happened. Raw data → IBM Granite (watsonx.ai) narrative → fan understanding.
 
-**🧠 Innovation with purpose** — What happens when you take IBM's Emmy-winning sports AI (Wimbledon Highlights, US Open commentary, ESPN Fantasy Football) and ask: *"What comes next?"* The answer: not just showing *what* happened, but explaining *why* it happened. Raw data → Granite narrative → fan understanding.
+**🌍 Social impact through access** — Football intelligence locked inside broadcast trucks for 154 years. Now free on any device, any country, no login required. Democratizing sports analytics.
 
-**🌍 Social impact through access** — Football intelligence has always been locked inside broadcast production trucks and analytics departments. Match Decoded gives it away for **free, on any device, in any country, with no login required.** A fan in Lagos, São Paulo, or Jakarta gets the same AI analyst as a network broadcaster. This is what democratizing sports knowledge looks like.
-
-**⚡ Innovation that serves people** — Not a black-box prediction. A transparent AI analyst that explains its reasoning in plain English. Every prediction is traceable. Every narrative is generated live by IBM Granite. Designed for the fan, not the data scientist.
+**⚡ Transparent AI** — No black box. Every prediction is traceable to 12 specific features. Every narrative is generated live by IBM Granite via watsonx.ai. No canned text. No fallbacks.
 
 ---
 
 ## 🌐 Try It Live
-
 | Frontend | URL |
 |---|---|
 | **React App (Primary)** | [match-decoded.vercel.app](https://match-decoded.vercel.app) |
@@ -48,178 +46,119 @@ This project sits at the intersection of everything IBM Sports & Entertainment s
 
 ---
 
-## 🏟️ The Problem: The Billion-Fan Information Gap
+## 🏟️ The Problem
 
-**It's World Cup semi-final day. Argentina vs Brazil. 80,000 fans in the stadium. A billion watching worldwide.**
-
-The pundits argue. The stats flash on screen. The betting odds shift. But the average fan still asks one question:
-
-> *"WHY is Argentina favoured? What makes Messi's Argentina different from the teams that lost before? Is it form? History? The venue?"*
-
-For 154 years and 49,000 international matches, that answer lived inside analytics departments, broadcast production trucks, and betting models that fans never had access to. **Match Decoded gives every fan an AI analyst — powered by IBM Granite — to decode any match, in plain English, in seconds. Just like IBM did for Wimbledon highlights and ESPN fantasy football.**
+For 154 years and 49,000 international matches, match intelligence lived inside analytics departments and broadcast trucks. **Match Decoded gives every fan an AI analyst — powered by IBM Granite on watsonx.ai — to decode any match, in plain English, in seconds.**
 
 ---
 
-## 🧠 The Solution: Fan Engagement Through Explainability
-
-Match Decoded is not a score predictor. It's a **fan education platform** — an AI analyst that explains *why* outcomes are likely, using IBM Granite to generate narratives that anyone can understand.
+## 🧠 The Solution
 
 | The Fan's Question | What Match Decoded Delivers |
 |---|---|
-| "Who do you think will win?" | **"Here's WHY — Granite breaks down the 8 factors driving this prediction"** |
-| "What if they played at home?" | **Live what-if simulator — Granite explains the delta in context** |
-| "Was Brazil 1970 really better?" | **Legends Matchup — cross-era Granite comparison with storytelling** |
-| "The pundit says X. Is that right?" | **Full decision trace — 8 feature importance bars, no black box** |
-| "What was the key moment?" | **Momentum timeline — Granite narrates the 90-minute story** |
-| "Is the model smarter than the market?" | **Model vs betting odds — The Edge detects undervalued picks** |
+| "Who do you think will win?" | **"Here's WHY"** — Granite breaks down 12 factors |
+| "What if they played at home?" | **Live what-if simulator** — Granite explains the delta |
+| "Was Brazil 1970 really better?" | **Legends Matchup** — Cross-era Granite storytelling |
+| "Is the model smarter than the market?" | **Model vs betting odds** — The Edge detection |
+| "What was the key moment?" | **Momentum timeline** — Granite narrates the 90-minute story |
 
 ---
 
 ## 🔧 IBM Technologies at the Core
 
-| # | Technology | How We Use It | Status |
-|---|---|---|---|
-| 1 | **IBM Granite 3.1-2B** | Core AI engine — generates tactical previews, decision explanations, momentum analysis, legends matchups, and match report analysis via HuggingFace Inference API | ✅ Live on Render |
-| 2 | **LangChain** | `ChatPromptTemplate` for all 5 prompt types — structured, type-safe prompt engineering that turns raw data into fan-friendly narratives | ✅ Live |
-| 3 | **IBM Docling** | PDF match report parser — extracts structured text from football report PDFs, feeds parsed data to Granite for AI analysis | ✅ Integrated |
-| 4 | **IBM Bob** | AI code assistant used throughout development — architecture, debugging, deployment | ✅ Documented |
+| # | Technology | How We Use It |
+|---|---|---|
+| 1 | **IBM Granite 3-8B (watsonx.ai)** | Core AI engine via IBM watsonx.ai SDK — all narratives generated live |
+| 2 | **LangChain** | Structured prompt engineering across 5 prompt templates |
+| 3 | **IBM Docling** | PDF match report parser with PyMuPDF fallback |
+| 4 | **IBM Bob** | AI code assistant used throughout development |
 
-### Why Granite Is the Star
+### Why watsonx.ai?
 
-Every line of analysis in Match Decoded is **Granite-generated**, not templated. The tactical preview, the decision trace explanation, the momentum timeline narrative, the legends debate, the what-if delta analysis — all generated live by IBM Granite via the HuggingFace Inference API.
+Every line of analysis is **Granite-generated via IBM watsonx.ai**, not templated or hardcoded. No fallback text. If watsonx.ai is unreachable, the API returns a clear 503 so the user knows the AI engine is unavailable — no silent degradation to canned text.
 
----
+### Real Data, Not Synthetic
 
-## ✨ Features
-
-### 📊 Pre-Match Preview
-Pick any two teams from 50+ international sides. See predicted outcome with probability breakdown, model vs market odds comparison, The Edge (undervalued/overpriced detection), predicted scoreline, tactical insight cards, and a **Granite-generated tactical preview** explaining WHY one team has the edge.
-
-### 🔀 What-If Simulator
-Adjust venue (neutral/home), tournament type (major/friendly), and recent form sliders for both teams. Watch the prediction shift in real time on an interactive scoreboard. **Granite explains the delta** — what changed and why. See the 90-minute momentum timeline with key events.
-
-### 🏆 Legends Matchup
-Cross-era comparisons — Brazil 1970 vs Germany 2014? England 1966 vs France 2018? Interactive radar chart comparing 5 performance dimensions. **Granite settles the debate** with statistical context and passionate football storytelling.
-
-### 📋 Match Report Analyzer (Docling)
-Upload a football match report PDF. **IBM Docling** extracts the text. **Granite + LangChain** analyzes the tactics, key moments, and what decided the match.
-
-### 🔍 Decision Trace
-Every prediction is fully transparent. View 8 feature importance bars, Granite's natural language explanation of the model's reasoning, model accuracy, and a momentum timeline chart showing how probability swings over 90 minutes.
+| Metric | Before | Now |
+|---|---|---|
+| Training data | 50,000 synthetic matchups | **31,161 real international matches (1990–2026)** |
+| Teams | 49 (hand-picked) | **224 teams** |
+| Model | Random Forest (55.8%) | **XGBoost + RF + GB ensemble (66.6%)** |
+| Features | 8 engineered | **12 engineered (ELO, rolling form, H2H, venue, tournament)** |
+| Baseline | 47.2% (home-win guess) | **48.2% → 66.6% (+18.4% improvement)** |
+| CV accuracy | — | **66.2% (5-fold cross-validation)** |
 
 ---
 
 ## 🏗️ Architecture
 
 ```
-                       Fans (Web + Mobile)
-                             │
-              ┌──────────────┴──────────────┐
-              ▼                             ▼
-    ┌────────────────────┐       ┌──────────────────┐
-    │  React Frontend    │       │  Streamlit App   │
-    │  (Vercel · Live)   │       │  (HF Spaces)     │
-    │  • Pre-Match       │       │  • Same features │
-    │  • What-If         │       │  • Standalone    │
-    │  • Legends         │       │  • No backend    │
-    │  • Decision Trace  │       │                  │
-    │  • Docling Upload  │       │                  │
-    └────────┬───────────┘       └──────────────────┘
-             │                                   
-             ▼                                   
-    ┌──────────────────────────────────────────┐
-    │         FastAPI Backend (Render)         │
-    │  /predict  /explain  /momentum /legends │
-    │  /docling/analyze  /health              │
-    └────────┬──────────┬──────────┬──────────┘
-             ▼          ▼          ▼
-    ┌──────────┐ ┌──────────┐ ┌──────────┐
-    │  Random  │ │ LangChain│ │  IBM     │
-    │  Forest  │ │  Prompt  │ │  Docling │
-    │  Model   │ │ Templates│ │  Parser  │
-    └──────────┘ └─────┬────┘ └──────────┘
-                       ▼
-                ┌───────────┐
-                │IBM Granite│
-                │ 3.1-2B    │
-                │(HF API)   │
-                └───────────┘
+Fans (Web + Mobile)
+    |
+    +---> React Frontend (Vercel)
+    |       Pre-Match, What-If, Legends, Decision Trace, Docling Upload
+    |
+    +---> Streamlit App (HF Spaces)
+    |
+    +---> FastAPI Backend (Render)
+            /predict, /explain, /momentum, /legends, /docling/analyze, /health
+                |
+                +---> XGBoost Ensemble Model (224 teams, 12 features)
+                |     Trained on 31,161 real matches (1990-2026)
+                |
+                +---> LangChain Prompt Templates (5 types)
+                |
+                +---> IBM Granite 3-8B (watsonx.ai)
+                |     All narratives generated live — no fallbacks
+                |
+                +---> IBM Docling Parser
+                      PDF match report → text → Granite analysis
 ```
-
-
-
-## 🌍 Accessible to Everyone
-
-| CSR Principle | How Match Decoded Delivers |
-|---|---|
-| **Democratizing access** | Free, no login, no paywall. Works on any phone or browser — a fan in any country gets the same AI analyst as a broadcaster |
-| **Education through AI** | Teaches fans to think critically about match analysis — "Why is Argentina favoured?" becomes a learning moment about form, history, and context |
-| **Responsible, transparent AI** | Every prediction comes with a full decision trace — 8 feature importance bars + Granite's natural language reasoning. No black box. The fan can verify the AI's thinking |
-| **Global reach** | Football is the world's game (3.5B fans). Web app means zero installation |
-| **Built with open access** | Free, no login, works on any device — the same experience for every fan |
-
----
-
-## 🎯 Judging Criteria Alignment
-
-| Criterion | How Match Decoded Delivers |
-|---|---|
-| **Fan Engagement** | Broadcast-quality UI with stadium atmosphere, gold trophy theme, glassmorphic cards. Every feature serves one purpose: helping a fan understand the game better. No technical jargon unless explained. |
-| **Sports AI Innovation** | First platform to combine Granite-generated tactical narratives + what-if simulation + cross-era legends comparison + momentum timeline + model-vs-market odds comparison + PDF report analysis in a single fan-facing experience. |
-| **IBM Technology Showcase** | 4 IBM technologies working together: Granite (the voice), LangChain (the structure), Docling (the input), Bob (the builder). Granite is the star — every narrative is live-generated, not templated. |
-| **Challenge Fit** | Football theme with World Cup context. "Every fan deserves to know why" — directly aligned with IBM's sports partnership mission of fan education through AI. |
-| **Feasibility & Polish** | Live at 4 URLs (React + Streamlit + Backend API + GitHub). Free tier deployment (Vercel + Render + HF Spaces). Mobile responsive. Works with or without backend. 50+ teams ready instantly. |
-| **Explainability** | Every prediction fully traceable: 8 feature importance bars, Granite natural language reasoning, model accuracy, market comparison. No black box. Designed for the non-technical fan. |
-| **Production Quality** | Stadium background, 3D gold trophy logo, ESPN-style scoreboards, Recharts radar + timeline charts, glassmorphic design system, consistent navy/gold broadcast palette. |
 
 ---
 
 ## 🚀 Quick Start
 
-### React (Primary Frontend)
-```bash
-git clone https://github.com/agp-369/match-decoded.git
-cd match-decoded/frontend-react
-npm install
-echo "VITE_API_URL=https://match-decoded-api.onrender.com" > .env
-npm run dev
-```
-Open `http://localhost:3000`
+### Prerequisites
+- Python 3.11+
+- Node.js 20+
+- IBM watsonx.ai API key + project ID ([Get free](https://cloud.ibm.com))
 
-### Streamlit (Standalone)
+### Backend
 ```bash
 git clone https://github.com/agp-369/match-decoded.git
 cd match-decoded
 pip install -r requirements.txt
-streamlit run frontend/app.py
+set WATSONX_API_KEY=your-key     # Windows
+set WATSONX_PROJECT_ID=your-id
+uvicorn backend.main:app --host 0.0.0.0 --port 8000
 ```
-Open `http://localhost:8501`
+
+### Frontend
+```bash
+cd frontend-react
+npm install
+echo "VITE_API_URL=http://localhost:8000" > .env
+npm run dev
+```
+
+### Run Tests
+```bash
+python -m pytest tests/ -v
+```
 
 ---
 
-## 📁 Project Structure
+## 🧪 Testing
 
-```
-match-decoded/
-├── backend/                  # FastAPI on Render
-│   ├── main.py              # 6 API endpoints
-│   ├── model.py             # Random Forest
-│   ├── granite.py           # IBM Granite integration
-│   ├── langchain_prompts.py # 5 prompt templates
-│   └── docling_parser.py    # IBM Docling
-├── frontend/                 # Streamlit (HF Spaces)
-├── frontend-react/           # React (Vercel)
-│   ├── src/
-│   │   ├── App.tsx
-│   │   ├── api.ts
-│   │   ├── components/
-│   │   └── index.css
-│   └── package.json
-├── models/                   # Trained RF model
-├── render.yaml               # Render deployment
-├── scripts/train_model.py
-└── README.md
-```
+**22 tests** covering:
+- Model loading & team data integrity
+- Prediction accuracy & probability calibration
+- All 224 teams pairwise validation
+- Feature importance correctness
+- API endpoints (health, teams, predict, error handling)
+- PDF parser fallback behavior
+- Training script reproducibility
 
 ---
 
@@ -227,21 +166,20 @@ match-decoded/
 
 | Technology | Purpose |
 |---|---|
-| **IBM Granite 3.1-2B** | AI match explainability (live via HF API) |
+| **IBM Granite 3-8B (watsonx.ai)** | AI match explainability — live, no fallbacks |
 | **LangChain** | Structured prompt engineering (5 templates) |
 | **IBM Docling** | PDF match report parsing |
 | **IBM Bob** | AI code assistant |
-| **React 19 + Vite** | Interactive frontend |
-| **Recharts** | Radar + line chart visualizations |
+| **XGBoost + scikit-learn** | Ensemble prediction model (66.6% accuracy) |
+| **React 19 + Vite + Recharts** | Interactive frontend |
 | **FastAPI** | Backend API |
-| **scikit-learn** | Random Forest prediction model (49 teams) |
-| **Vercel + Render** | Production deployment (free tier) |
-| **HuggingFace Spaces** | Streamlit deployment (free tier) |
+| **Pytest** | Test suite (22 tests) |
+| **GitHub Actions** | CI/CD pipeline |
+| **Docker / Render / Vercel** | Deployment |
 
 ---
 
 ## 📝 License
-
 Apache 2.0 — Built for the IBM AI Builders Challenge 2026
 
 ---

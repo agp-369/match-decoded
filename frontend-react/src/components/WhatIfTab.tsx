@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { TEAMS, TEAM_STATS, teamFlag, momentumFallback, apiPost, predictLocalWithForm, fmtPct, generateMomentum } from '../api'
+import { TEAMS, TEAM_STATS, teamFlag, apiPost, predictLocalWithForm, fmtPct, generateMomentum } from '../api'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 interface Props { apiAvailable: boolean; setApiAvailable: (v: boolean) => void }
@@ -50,9 +50,9 @@ export default function WhatIfTab({ apiAvailable, setApiAvailable }: Props) {
         team_a: a, team_b: b, prob_a: p.team_a_win_prob, prob_b: p.team_b_win_prob,
       })
       if (r) setNarrative(r.narrative)
-      else { setApiAvailable(false); setNarrative(momentumFallback(a, b, p.team_a_win_prob, p.team_b_win_prob)) }
+      else { setApiAvailable(false); setNarrative('') }
     } else {
-      setNarrative(momentumFallback(a, b, p.team_a_win_prob, p.team_b_win_prob))
+      setNarrative('')
     }
     setLoading(false)
   }

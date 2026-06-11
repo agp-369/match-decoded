@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { TEAMS, TEAM_STATS, predictLocal, fmtPct, teamFlag, previewFallback, apiPost, getH2H, distance } from '../api'
+import { TEAMS, TEAM_STATS, predictLocal, fmtPct, teamFlag, apiPost, getH2H, distance } from '../api'
 
 interface Props { apiAvailable: boolean; setApiAvailable: (v: boolean) => void }
 
@@ -78,9 +78,9 @@ export default function PreMatchTab({ apiAvailable, setApiAvailable }: Props) {
         team_a: ta, team_b: tb, is_neutral: n, is_major_tournament: m,
       })
       if (r) setNarrative(r.narrative)
-      else { setApiAvailable(false); setNarrative(previewFallback(ta, tb, p.team_a_win_prob, p.draw_prob, p.team_b_win_prob)) }
+      else { setApiAvailable(false); setNarrative('') }
     } else {
-      setNarrative(previewFallback(ta, tb, p.team_a_win_prob, p.draw_prob, p.team_b_win_prob))
+      setNarrative('')
     }
     setLoading(false)
   }

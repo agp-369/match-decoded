@@ -80,8 +80,8 @@ export default function App() {
             <div className="hero-stat-label">Teams Tracked</div>
           </div>
           <div className="hero-stat">
-            <div className="hero-stat-value">55.8%</div>
-            <div className="hero-stat-label">Model Accuracy</div>
+            <div className="hero-stat-value">66.6%</div>
+            <div className="hero-stat-label">Model Accuracy (Real Data)</div>
           </div>
           <div className="hero-stat">
             <div className="hero-stat-value" style={{ fontSize: '0.85rem', fontFamily: 'var(--font)' }}>

@@ -1,14 +1,15 @@
 """
 FastAPI backend — Match Decoded API
-IBM Technologies: Granite + LangChain + Docling + IBM Bob
+IBM Technologies: Granite (watsonx.ai) + LangChain + Docling + IBM Bob
 """
 import os
 import sys
-import shutil
 import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
+
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,13 +19,28 @@ from model import predictor
 from granite import (
     generate_preview, generate_explain, generate_momentum,
     generate_docling_analysis, generate_legends,
+    WATSONX_AVAILABLE,
 )
 from docling_parser import extract_match_details
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    loaded = predictor.load()
+    print(f"Model loaded: {loaded}, teams: {len(predictor.get_team_names()) if loaded else 0}")
+    print(f"IBM watsonx.ai configured: {WATSONX_AVAILABLE}")
+    if WATSONX_AVAILABLE:
+        print(f"  Model: ibm/granite-3-8b-instruct")
+    else:
+        print("  WARNING: watsonx.ai credentials not set. AI narrative features will return 503.")
+    yield
+
+
 app = FastAPI(
     title="Match Decoded API",
-    description="AI-powered football match explainability — IBM Granite + LangChain + Docling",
-    version="2.0.0",
+    description="AI-powered football match explainability — IBM Granite (watsonx.ai) + LangChain + Docling",
+    version="3.0.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -57,39 +73,21 @@ class LegendsRequest(BaseModel):
     era_b: str = "Modern era"
 
 
-@app.on_event("startup")
-def startup():
-    loaded = predictor.load()
-    print(f"Model loaded: {loaded}, teams: {len(predictor.get_team_names()) if loaded else 0}")
-
-    try:
-        import docling_parser
-        print(f"Docling available: {docling_parser.DOCLING_AVAILABLE}")
-    except:
-        print("Docling not available")
-
-    try:
-        import langchain
-        print(f"LangChain available: {langchain.__version__}")
-    except:
-        print("LangChain not available")
-
-
 @app.get("/health")
 def health():
-    ibm_techs = ["IBM Granite (HuggingFace Inference API)", "LangChain (prompt templates)"]
-    try:
-        import docling_parser
-        if docling_parser.DOCLING_AVAILABLE:
-            ibm_techs.append("Docling (PDF parsing)")
-    except:
-        pass
-
     return {
         "status": "ok",
         "model_loaded": predictor._loaded,
         "teams_available": len(predictor.get_team_names()),
-        "ibm_technologies": ibm_techs,
+        "watsonx_configured": WATSONX_AVAILABLE,
+        "data_source": "31,161 real international matches (1990-2026)",
+        "model_accuracy": "66.6% (XGBoost ensemble, 3-class)",
+        "ibm_technologies": [
+            "IBM Granite 3-8B (watsonx.ai)",
+            "LangChain (prompt templates)",
+            "IBM Docling (PDF parsing)",
+            "IBM Bob (code assistant)",
+        ],
     }
 
 
@@ -117,6 +115,9 @@ def preview_match(req: ExplainRequest):
     except (ValueError, RuntimeError) as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+    if not WATSONX_AVAILABLE:
+        raise HTTPException(status_code=503, detail="IBM watsonx.ai not configured. AI narrative unavailable. Set WATSONX_API_KEY and WATSONX_PROJECT_ID.")
+
     narrative = generate_preview(
         result["team_a"], result["team_b"],
         result["team_a_win_prob"], result["draw_prob"], result["team_b_win_prob"],
@@ -132,6 +133,9 @@ def explain_decision(req: ExplainRequest):
         result = predictor.predict(req.team_a, req.team_b, req.is_neutral, req.is_major_tournament)
     except (ValueError, RuntimeError) as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+    if not WATSONX_AVAILABLE:
+        raise HTTPException(status_code=503, detail="IBM watsonx.ai not configured.")
 
     importances = predictor.get_feature_importances()
     top_features = [f["name"] for f in importances[:3]]
@@ -155,6 +159,9 @@ def momentum_analysis(req: ExplainRequest):
     except (ValueError, RuntimeError) as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+    if not WATSONX_AVAILABLE:
+        raise HTTPException(status_code=503, detail="IBM watsonx.ai not configured.")
+
     analysis = generate_momentum(
         result["team_a"], result["team_b"],
         result["team_a_win_prob"], result["team_b_win_prob"],
@@ -176,6 +183,9 @@ def legends_matchup(req: LegendsRequest):
         raise
     except Exception as e:
         raise HTTPException(status_code=503, detail=str(e))
+
+    if not WATSONX_AVAILABLE:
+        raise HTTPException(status_code=503, detail="IBM watsonx.ai not configured.")
 
     narrative = generate_legends(
         req.team_a, req.team_b, req.era_a, req.era_b,
@@ -216,6 +226,9 @@ async def docling_analyze(file: UploadFile = File(...)):
 
         if not details or not details.get("text"):
             raise HTTPException(status_code=422, detail="Could not extract text from PDF")
+
+        if not WATSONX_AVAILABLE:
+            raise HTTPException(status_code=503, detail="IBM watsonx.ai not configured.")
 
         analysis = generate_docling_analysis(details["text"])
 

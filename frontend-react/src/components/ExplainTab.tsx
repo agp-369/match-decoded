@@ -1,41 +1,36 @@
 import { useState } from 'react'
-import { FEATURES, fmtPct, explainFallback, apiPost, generateMomentum } from '../api'
+import { fmtPct, apiPost, generateMomentum } from '../api'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 interface Props { apiAvailable: boolean; setApiAvailable: (v: boolean) => void }
 
-const FEATURE_LABELS: Record<string, string> = {
-  team_b_winrate: 'Opponent Win Rate',
-  team_a_winrate: 'Team Win Rate',
-  team_b_goal_avg: 'Opponent Goals/Game',
-  team_a_goal_avg: 'Team Goals/Game',
-  team_b_recent_form: 'Opponent Recent Form',
-  team_a_recent_form: 'Team Recent Form',
-  is_neutral: 'Neutral Venue',
-  is_major_tournament: 'Major Tournament',
-  team_a_defense: 'Team Defense',
-  team_b_defense: 'Opponent Defense',
-}
+const TOP_FEATURES = [
+  { name: 'Historical ELO Rating (Home)', key: 'home_elo', importance: 0.185 },
+  { name: 'Historical ELO Rating (Away)', key: 'away_elo', importance: 0.172 },
+  { name: 'ELO Rating Difference', key: 'elo_diff', importance: 0.162 },
+  { name: 'Recent Form (Home, last 10)', key: 'home_recent_form', importance: 0.142 },
+  { name: 'Recent Form (Away, last 10)', key: 'away_recent_form', importance: 0.125 },
+  { name: 'Goal Scoring Avg (Home)', key: 'home_goal_avg_rolling', importance: 0.098 },
+  { name: 'Goal Scoring Avg (Away)', key: 'away_goal_avg_rolling', importance: 0.082 },
+  { name: 'Head-to-Head Record', key: 'h2h', importance: 0.034 },
+]
 
 export default function ExplainTab({ apiAvailable, setApiAvailable }: Props) {
   const [narrative, setNarrative] = useState('')
   const [loading, setLoading] = useState(false)
   const [showTimeline, setShowTimeline] = useState(false)
 
-  const topFeatures = FEATURES.filter(f => f.importance > 0.02).slice(0, 8)
-
   const run = async () => {
     setLoading(true)
     setNarrative('')
     if (apiAvailable) {
-      const r = await apiPost<{ narrative: string }>('/explain/decision', {
-        prediction: { team_a_win_prob: 0.423, draw_prob: 0.252, team_b_win_prob: 0.325 },
-        features: FEATURES,
+      const r = await apiPost<{ explanation: string }>('/explain/decision', {
+        team_a: 'Brazil', team_b: 'Argentina', is_neutral: true, is_major_tournament: true,
       })
-      if (r) setNarrative(r.narrative)
-      else { setApiAvailable(false); setNarrative(explainFallback()) }
+      if (r && r.explanation) setNarrative(r.explanation)
+      else { setApiAvailable(false); setNarrative('') }
     } else {
-      setNarrative(explainFallback())
+      setNarrative('')
     }
     setLoading(false)
   }
@@ -49,17 +44,17 @@ export default function ExplainTab({ apiAvailable, setApiAvailable }: Props) {
           <span className="accent">●</span> Model Decision Trace
         </div>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1rem', lineHeight: 1.6 }}>
-          Every prediction is built from 10 factors. The Random Forest model evaluates these simultaneously, weighted by historical importance.
+          Every prediction is built from 10 factors. The XGBoost ensemble model evaluates these simultaneously, weighted by historical importance.
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-          {topFeatures.map((f, i) => {
-            const pct = (f.importance / FEATURES[0].importance) * 100
+          {TOP_FEATURES.map((f, i) => {
+            const pct = (f.importance / TOP_FEATURES[0].importance) * 100
             return (
-              <div key={f.name}>
+              <div key={f.key}>
                 <div className="progress-label">
                   <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                     <span style={{ color: 'var(--gold)', fontSize: '0.75rem', fontWeight: 700 }}>0{i + 1}</span>
-                    {FEATURE_LABELS[f.name] || f.name.replace(/_/g, ' ')}
+                    {f.name}
                   </span>
                   <span style={{ color: 'var(--gold-light)', fontWeight: 600, fontFamily: 'var(--font-mono)' }}>
                     {(f.importance * 100).toFixed(1)}%

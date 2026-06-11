@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { TEAMS, TEAM_STATS, fmtPct, teamFlag, legendsFallback, apiPost } from '../api'
+import { TEAMS, TEAM_STATS, fmtPct, teamFlag, apiPost } from '../api'
 import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend, ResponsiveContainer } from 'recharts'
 
 interface Props { apiAvailable: boolean; setApiAvailable: (v: boolean) => void }
@@ -52,9 +52,9 @@ export default function LegendsTab({ apiAvailable, setApiAvailable }: Props) {
     if (apiAvailable) {
       const r = await apiPost<{ narrative: string }>('/explain/legends', { team_a: a, team_b: b })
       if (r) setNarrative(r.narrative)
-      else { setApiAvailable(false); setNarrative(legendsFallback(a, b, sa, sb)) }
+      else { setApiAvailable(false); setNarrative('') }
     } else {
-      setNarrative(legendsFallback(a, b, sa, sb))
+      setNarrative('')
     }
     setLoading(false)
   }

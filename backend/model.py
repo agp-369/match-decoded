@@ -1,12 +1,28 @@
 """
-Prediction model wrapper — loads Random Forest trained in the lab
+Prediction model wrapper — loads XGBoost trained on 31,161 real international matches
 """
 import os
 import joblib
 import pandas as pd
+import numpy as np
 from pathlib import Path
 
 MODELS_DIR = Path(os.path.dirname(os.path.dirname(__file__))) / "models"
+
+FEATURE_NAME_MAP = {
+    'home_elo': 'Historical ELO Rating (Home)',
+    'away_elo': 'Historical ELO Rating (Away)',
+    'elo_diff': 'ELO Rating Difference',
+    'home_recent_form': 'Recent Form (Home, last 10)',
+    'away_recent_form': 'Recent Form (Away, last 10)',
+    'home_goal_avg_rolling': 'Goal Scoring Average (Home)',
+    'away_goal_avg_rolling': 'Goal Scoring Average (Away)',
+    'h2h_hw': 'Head-to-Head Record (Home)',
+    'h2h_aw': 'Head-to-Head Record (Away)',
+    'is_neutral': 'Neutral Venue',
+    'is_major': 'Major Tournament Match',
+    'is_friendly': 'Friendly Match',
+}
 
 
 class MatchPredictor:
@@ -51,16 +67,21 @@ class MatchPredictor:
         a = self.team_stats[team_a]
         b = self.team_stats[team_b]
 
-        row = pd.DataFrame([{
-            "team_a_winrate": a["winrate"],
-            "team_b_winrate": b["winrate"],
-            "team_a_goal_avg": a["goal_avg"],
-            "team_b_goal_avg": b["goal_avg"],
-            "team_a_recent_form": a["recent_form"],
-            "team_b_recent_form": b["recent_form"],
-            "is_neutral": int(is_neutral),
-            "is_major_tournament": int(is_major_tournament),
-        }])[self.feature_cols]
+        is_major = int(is_major_tournament)
+        is_friendly = int(not is_major)
+
+        # Build feature row matching training features
+        row_dict = {
+            'home_elo': 1500.0, 'away_elo': 1500.0, 'elo_diff': 0.0,
+            'home_recent_form': a['recent_form'], 'away_recent_form': b['recent_form'],
+            'home_goal_avg_rolling': a['goal_avg'], 'away_goal_avg_rolling': b['goal_avg'],
+            'h2h_hw': 0.5, 'h2h_aw': 0.5,
+            'is_neutral': int(is_neutral),
+            'is_major': is_major,
+            'is_friendly': is_friendly,
+        }
+
+        row = pd.DataFrame([row_dict])[self.feature_cols]
 
         proba = self.model.predict_proba(row)[0]
 
@@ -95,10 +116,15 @@ class MatchPredictor:
         if not self._loaded:
             return []
         names = self.feature_cols
-        imps = self.model.feature_importances_
-        return [{"name": n, "importance": round(float(i), 4)}
-                for n, i in sorted(zip(names, imps), key=lambda x: -x[1])]
+        if hasattr(self.model, 'feature_importances_'):
+            imps = self.model.feature_importances_
+        else:
+            imps = np.ones(len(names)) / len(names)
+        mapped = []
+        for n, i in sorted(zip(names, imps), key=lambda x: -x[1]):
+            display_name = FEATURE_NAME_MAP.get(n, n.replace('_', ' ').title())
+            mapped.append({"name": display_name, "importance": round(float(i), 4)})
+        return mapped
 
 
-# Singleton
 predictor = MatchPredictor()

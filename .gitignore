@@ -1,5 +1,6 @@
 __pycache__/
 *.pyc
+*.pyo
 .env
 .env.local
 *.egg-info/
@@ -8,7 +9,11 @@ build/
 .venv/
 venv/
 env/
-# models/*.pkl  # committed for Render deployment
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.vercel/
+node_modules/
+*.log
 .DS_Store
-
-.vercel
+Thumbs.db

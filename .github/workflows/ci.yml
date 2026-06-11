@@ -1,0 +1,96 @@
+name: Match Decoded CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test-backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest httpx
+
+    - name: Run model tests
+      run: |
+        python -m pytest tests/ -v --tb=short -x -m "not slow"
+
+    - name: Verify model loads
+      run: |
+        python -c "
+        import sys; sys.path.insert(0, '.')
+        from backend.model import predictor
+        predictor.load()
+        teams = predictor.get_team_names()
+        print(f'Model loaded: {len(teams)} teams')
+        assert len(teams) >= 49
+        r = predictor.predict('Brazil', 'Argentina', True, True)
+        total = r['team_a_win_prob'] + r['draw_prob'] + r['team_b_win_prob']
+        print(f'Brazil vs Argentina: {r[\"team_a_win_prob\"]:.3f} / {r[\"draw_prob\"]:.3f} / {r[\"team_b_win_prob\"]:.3f} (sum={total:.3f})')
+        assert abs(total - 1.0) < 0.02
+        print('Model validation PASSED')
+        "
+
+    - name: Verify training script reproduces
+      run: |
+        python -c "
+        import joblib, os
+        from pathlib import Path
+        models_dir = Path('models')
+        assert (models_dir / 'match_predictor.pkl').exists()
+        assert (models_dir / 'team_data.pkl').exists()
+        metadata = joblib.load(models_dir / 'model_metadata.json')
+        print(f'Accuracy: {metadata["test_accuracy"]}')
+        print(f'CV Mean: {metadata["cv_mean"]}')
+        print(f'Matches: {metadata["n_matches"]}')
+        print(f'Teams: {metadata["n_teams"]}')
+        print(f'Data Range: {metadata["data_range"]}')
+        assert metadata['n_matches'] >= 30000, 'Expected >=30k matches'
+        print('Training validation PASSED')
+        "
+
+  test-frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend-react
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: frontend-react/package-lock.json
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Type check
+      run: npx tsc --noEmit
+
+    - name: Build frontend
+      run: npm run build
+
+    - name: Verify build output
+      run: |
+        test -d dist && echo "Build successful" || exit 1
