@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { FEATURES, fmtPct, explainFallback, apiPost } from '../api'
+import { FEATURES, fmtPct, explainFallback, apiPost, generateMomentum } from '../api'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 interface Props { apiAvailable: boolean; setApiAvailable: (v: boolean) => void }
 
@@ -12,13 +13,16 @@ const FEATURE_LABELS: Record<string, string> = {
   team_a_recent_form: 'Team Recent Form',
   is_neutral: 'Neutral Venue',
   is_major_tournament: 'Major Tournament',
+  team_a_defense: 'Team Defense',
+  team_b_defense: 'Opponent Defense',
 }
 
 export default function ExplainTab({ apiAvailable, setApiAvailable }: Props) {
   const [narrative, setNarrative] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showTimeline, setShowTimeline] = useState(false)
 
-  const topFeatures = FEATURES.filter(f => f.importance > 0.02).slice(0, 6)
+  const topFeatures = FEATURES.filter(f => f.importance > 0.02).slice(0, 8)
 
   const run = async () => {
     setLoading(true)
@@ -36,16 +40,18 @@ export default function ExplainTab({ apiAvailable, setApiAvailable }: Props) {
     setLoading(false)
   }
 
+  const momentum = showTimeline ? generateMomentum(0.423, 0.252, 0.325) : []
+
   return (
     <div>
       <div className="glass-card gold-border">
         <div className="section-heading">
-          <span className="accent">●</span> Model Feature Importance
+          <span className="accent">●</span> Model Decision Trace
         </div>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1rem', lineHeight: 1.6 }}>
-          Every prediction is built from 8 factors. Here's how the model weights each one — sorted by influence.
+          Every prediction is built from 10 factors. The Random Forest model evaluates these simultaneously, weighted by historical importance.
         </p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
           {topFeatures.map((f, i) => {
             const pct = (f.importance / FEATURES[0].importance) * 100
             return (
@@ -68,9 +74,43 @@ export default function ExplainTab({ apiAvailable, setApiAvailable }: Props) {
         </div>
       </div>
 
-      <button className="btn-primary" onClick={run} disabled={loading}>
-        {loading ? <><span className="spinner" /> Analyzing...</> : '🤖 Explain with Granite'}
-      </button>
+      <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <button className="btn-primary" onClick={run} disabled={loading} style={{ flex: 1 }}>
+          {loading ? <><span className="spinner" /> Analyzing...</> : '🤖 Explain with Granite'}
+        </button>
+        <button className="btn-secondary" onClick={() => setShowTimeline(!showTimeline)}>
+          {showTimeline ? 'Hide Timeline' : 'Simulate Match'}
+        </button>
+      </div>
+
+      {showTimeline && (
+        <div className="glass-card" style={{ marginTop: '0.8rem' }}>
+          <div className="section-heading">
+            <span className="accent">●</span> Probability Timeline
+          </div>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginBottom: '0.5rem' }}>
+            Simulated probability over 90 minutes — showing how goals, cards, and tactics shift momentum.
+          </p>
+          <ResponsiveContainer width="100%" height={200}>
+            <LineChart data={momentum}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+              <XAxis dataKey="minute" tick={{ fill: '#5a6a80', fontSize: 10 }} />
+              <YAxis domain={[0, 1]} tick={{ fill: '#5a6a80', fontSize: 10 }} tickFormatter={v => `${(v * 100).toFixed(0)}%`} />
+              <Tooltip contentStyle={{ background: '#0a0e27', border: '1px solid rgba(245,158,11,0.2)', borderRadius: '8px', fontSize: '0.75rem' }}
+                formatter={(v: number) => `${(v * 100).toFixed(1)}%`} />
+              <Legend wrapperStyle={{ fontSize: '0.7rem' }} />
+              <Line type="monotone" dataKey="a_prob" stroke="#22c55e" strokeWidth={2} dot={false} name="Home" />
+              <Line type="monotone" dataKey="b_prob" stroke="#ef4444" strokeWidth={2} dot={false} name="Away" />
+              <Line type="monotone" dataKey="d_prob" stroke="#94a3b8" strokeWidth={1} strokeDasharray="4 4" dot={false} name="Draw" />
+            </LineChart>
+          </ResponsiveContainer>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginTop: '0.3rem' }}>
+            {momentum.filter(p => p.event).map((p, i) => (
+              <span key={i} className="momentum-event">{p.event} ({p.minute}')</span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {narrative && <div className="granite-box" style={{ marginTop: '1rem' }}>{narrative}</div>}
     </div>

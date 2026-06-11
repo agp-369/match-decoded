@@ -1,9 +1,38 @@
 import { useState } from 'react'
-import { TEAMS, predictLocal, fmtPct, teamFlag, previewFallback, apiPost } from '../api'
+import { TEAMS, predictLocal, fmtPct, teamFlag, previewFallback, apiPost, getH2H, distance } from '../api'
 
 interface Props {
   apiAvailable: boolean
   setApiAvailable: (v: boolean) => void
+}
+
+function TeamSelect({ value, onChange, exclude, side }: { value: string; onChange: (v: string) => void; exclude: string; side: 'a' | 'b' }) {
+  const [open, setOpen] = useState(false)
+  const [q, setQ] = useState('')
+  const filtered = TEAMS.filter(t => t !== exclude && t.toLowerCase().includes(q.toLowerCase())).slice(0, 30)
+  const cls = side === 'a' ? 'team-select team-select-a' : 'team-select team-select-b'
+  return (
+    <div className={cls} style={{ position: 'relative' }}>
+      <input
+        className="team-select-input"
+        placeholder={side === 'a' ? 'Home team...' : 'Away team...'}
+        value={open ? q : `${teamFlag(value)} ${value}`}
+        onFocus={() => { setOpen(true); setQ('') }}
+        onBlur={() => setTimeout(() => setOpen(false), 200)}
+        onChange={e => setQ(e.target.value)}
+      />
+      {open && (
+        <div className="team-select-dropdown">
+          {filtered.map(t => (
+            <div key={t} className="team-select-option" onMouseDown={() => { onChange(t); setOpen(false) }}>
+              <span className="team-select-flag">{teamFlag(t)}</span> {t}
+            </div>
+          ))}
+          {filtered.length === 0 && <div className="team-select-option" style={{ opacity: 0.5 }}>No teams found</div>}
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function PreMatchTab({ apiAvailable, setApiAvailable }: Props) {
@@ -39,9 +68,16 @@ export default function PreMatchTab({ apiAvailable, setApiAvailable }: Props) {
   const bw = (p.team_b_win_prob * 100)
   const dw = (p.draw_prob * 100)
   const aIsFav = aw > bw
+  const h2h = getH2H(a, b)
+  const dist = distance(a, b)
 
   return (
     <div>
+      <div className="grid-2" style={{ marginBottom: '0.8rem' }}>
+        <TeamSelect value={a} onChange={setA} exclude={b} side="a" />
+        <TeamSelect value={b} onChange={setB} exclude={a} side="b" />
+      </div>
+
       <div className="grid-2">
         <div className="team-card team-a">
           <span className="team-flag">{flagA}</span>
@@ -63,6 +99,22 @@ export default function PreMatchTab({ apiAvailable, setApiAvailable }: Props) {
         </div>
       </div>
 
+      {h2h && (
+        <div className="glass-card" style={{ margin: '0.8rem 0', padding: '0.8rem 1rem' }}>
+          <div className="section-heading" style={{ fontSize: '0.8rem', marginBottom: '0.5rem' }}>
+            <span className="accent">●</span> Head-to-Head Record
+          </div>
+          <div className="h2h-row">
+            <div className="h2h-stat"><span className="h2h-value" style={{ color: '#22c55e' }}>{h2h.a_wins}</span><span className="h2h-label">{a} wins</span></div>
+            <div className="h2h-stat"><span className="h2h-value" style={{ color: '#94a3b8' }}>{h2h.draws}</span><span className="h2h-label">Draws</span></div>
+            <div className="h2h-stat"><span className="h2h-value" style={{ color: '#ef4444' }}>{h2h.b_wins}</span><span className="h2h-label">{b} wins</span></div>
+            <div className="h2h-stat"><span className="h2h-value" style={{ color: '#f59e0b' }}>{h2h.total}</span><span className="h2h-label">Total meetings</span></div>
+          </div>
+        </div>
+      )}
+
+      {dist && <div className="context-line">{flagA} {a} · {dist} · {flagB} {b}</div>}
+
       <div className="glass-card gold-border">
         <div className="checkbox-group">
           <input type="checkbox" id="neutral" checked={neutral} onChange={e => setNeutral(e.target.checked)} />
@@ -78,7 +130,6 @@ export default function PreMatchTab({ apiAvailable, setApiAvailable }: Props) {
         {loading ? <><span className="spinner" /> Analyzing...</> : '🎯 Analyze Match'}
       </button>
 
-      {}
       {(pred || narrative) && (
         <div className="glass-card gold-border" style={{ marginTop: '1rem' }}>
           <div className="section-heading">

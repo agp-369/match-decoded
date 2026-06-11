@@ -331,7 +331,96 @@ body::before {
   box-shadow: none;
 }
 
-/* ─── Select / Input ─── */
+.btn-secondary {
+  background: rgba(240, 244, 255, 0.04);
+  border: 1px solid rgba(240, 244, 255, 0.1);
+  border-radius: 10px;
+  color: var(--text-muted);
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  font-family: var(--font);
+  font-size: 0.8rem;
+}
+.btn-secondary:hover {
+  background: rgba(240, 244, 255, 0.08);
+  border-color: rgba(240, 244, 255, 0.2);
+  color: var(--text);
+}
+
+/* ─── Team Select (Searchable) ─── */
+.team-select-input {
+  background: rgba(240, 244, 255, 0.04);
+  border: 1px solid rgba(240, 244, 255, 0.08);
+  border-radius: 10px;
+  color: var(--text);
+  padding: 0.65rem 1rem;
+  font-family: var(--font);
+  font-size: 0.9rem;
+  width: 100%;
+  outline: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.team-select-input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.08); }
+.team-select-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: #0a0e27;
+  border: 1px solid rgba(245, 158, 11, 0.15);
+  border-radius: 10px;
+  margin-top: 4px;
+  max-height: 280px;
+  overflow-y: auto;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+}
+.team-select-dropdown::-webkit-scrollbar { width: 4px; }
+.team-select-dropdown::-webkit-scrollbar-thumb { background: rgba(245,158,11,0.2); border-radius: 2px; }
+.team-select-option {
+  padding: 0.5rem 0.8rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: background 0.15s;
+}
+.team-select-option:hover { background: rgba(245, 158, 11, 0.08); }
+.team-select-flag { font-size: 1.1rem; }
+
+/* ─── Head-to-Head ─── */
+.h2h-row {
+  display: flex;
+  gap: 1rem;
+  justify-content: space-around;
+  text-align: center;
+}
+.h2h-stat { display: flex; flex-direction: column; align-items: center; gap: 0.15rem; }
+.h2h-value { font-size: 1.6rem; font-weight: 800; font-family: var(--font-mono); line-height: 1; }
+.h2h-label { font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+/* ─── Context Line ─── */
+.context-line {
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin: 0.5rem 0;
+  letter-spacing: 0.03em;
+}
+
+/* ─── Momentum Events ─── */
+.momentum-event {
+  display: inline-block;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.15);
+  border-radius: 4px;
+  padding: 0.15rem 0.4rem;
+  font-size: 0.65rem;
+  color: var(--gold-light);
+}
 select, input[type="text"], input[type="number"], .select-like {
   background: rgba(240, 244, 255, 0.04);
   border: 1px solid rgba(240, 244, 255, 0.08);
