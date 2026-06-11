@@ -1,10 +1,11 @@
 """
-IBM Granite integration via IBM watsonx.ai — Match Decoded
-Uses LangChain prompt templates + IBM watsonx.ai SDK
+IBM Granite integration — Match Decoded
+Primary: IBM watsonx.ai  |  Fallback: HuggingFace Inference API (same Granite model)
 """
 import os
 import json
 import logging
+import requests
 from typing import Optional
 
 from backend.langchain_prompts import (
@@ -14,21 +15,22 @@ from backend.langchain_prompts import (
 
 logger = logging.getLogger(__name__)
 
+GRANITE_MODEL_ID = "ibm/granite-3-8b-instruct"
+HF_MODEL_ID = "ibm-granite/granite-3-8b-instruct"
+HF_API_URL = f"https://api-inference.huggingface.co/models/{HF_MODEL_ID}"
+
 WATSONX_API_KEY = os.environ.get("WATSONX_API_KEY", "")
 WATSONX_PROJECT_ID = os.environ.get("WATSONX_PROJECT_ID", "")
 WATSONX_URL = os.environ.get("WATSONX_URL", "https://us-south.ml.cloud.ibm.com")
-GRANITE_MODEL_ID = "ibm/granite-3-8b-instruct"
+HF_TOKEN = os.environ.get("HF_TOKEN", "")
 
 WATSONX_AVAILABLE = bool(WATSONX_API_KEY and WATSONX_PROJECT_ID)
+HF_AVAILABLE = bool(HF_TOKEN)
+AI_AVAILABLE = WATSONX_AVAILABLE or HF_AVAILABLE
 
 
-def get_model():
-    """Lazy-init watsonx.ai model inference."""
-    if not WATSONX_AVAILABLE:
-        raise RuntimeError(
-            "IBM watsonx.ai not configured. Set WATSONX_API_KEY, WATSONX_PROJECT_ID, "
-            "and optionally WATSONX_URL in environment."
-        )
+def _query_watsonx(prompt: str, max_tokens: int) -> str:
+    """Query IBM Granite via watsonx.ai SDK."""
     from ibm_watsonx_ai.foundation_models import ModelInference
     from ibm_watsonx_ai.metanames import GenTextParamsMetaNames as Params
 
@@ -36,7 +38,7 @@ def get_model():
         Params.DECODING_METHOD: "sample",
         Params.TEMPERATURE: 0.7,
         Params.TOP_P: 0.9,
-        Params.MAX_NEW_TOKENS: 300,
+        Params.MAX_NEW_TOKENS: max_tokens,
         Params.MIN_NEW_TOKENS: 30,
         Params.REPETITION_PENALTY: 1.05,
     }
@@ -47,27 +49,70 @@ def get_model():
         credentials={"apikey": WATSONX_API_KEY, "url": WATSONX_URL},
         project_id=WATSONX_PROJECT_ID,
     )
-    return model
+
+    response = model.generate_text(prompt=prompt)
+    if response and response.strip():
+        return response.strip()
+    raise RuntimeError("Empty response from watsonx.ai")
+
+
+def _query_huggingface(prompt: str, max_tokens: int) -> str:
+    """Query IBM Granite via HuggingFace Inference API (free tier fallback)."""
+    resp = requests.post(
+        HF_API_URL,
+        json={
+            "inputs": prompt,
+            "parameters": {
+                "max_new_tokens": max_tokens,
+                "temperature": 0.7,
+                "top_p": 0.9,
+                "repetition_penalty": 1.05,
+                "do_sample": True,
+            },
+        },
+        headers={"Authorization": f"Bearer {HF_TOKEN}"},
+        timeout=60,
+    )
+    if resp.status_code != 200:
+        raise RuntimeError(f"HuggingFace API error {resp.status_code}: {resp.text[:200]}")
+    result = resp.json()
+    if isinstance(result, list) and len(result) > 0:
+        text = result[0].get("generated_text", "")
+        if text.strip():
+            return text.strip()
+    raise RuntimeError("Empty response from HuggingFace API")
 
 
 def query_granite(prompt: str, max_tokens: int = 300) -> str:
-    """Query IBM Granite via IBM watsonx.ai. Returns AI-generated text or raises on failure."""
-    if not WATSONX_AVAILABLE:
-        raise RuntimeError(
-            "IBM watsonx.ai is not configured. "
-            "Set WATSONX_API_KEY and WATSONX_PROJECT_ID environment variables."
-        )
-    try:
-        model = get_model()
-        params = model._params
-        params[model._ParamsClass.MAX_NEW_TOKENS] = max_tokens
-        response = model.generate_text(prompt=prompt)
-        if response and response.strip():
-            return response.strip()
-        raise RuntimeError("Empty response from watsonx.ai")
-    except Exception as e:
-        logger.error(f"IBM watsonx.ai Granite query failed: {e}")
-        raise RuntimeError(f"IBM Granite (watsonx.ai) generation failed: {e}")
+    """Query IBM Granite — watsonx.ai primary, HuggingFace fallback."""
+    errors = []
+    if WATSONX_AVAILABLE:
+        try:
+            result = _query_watsonx(prompt, max_tokens)
+            logger.info("Granite response via watsonx.ai")
+            return result
+        except Exception as e:
+            logger.warning(f"watsonx.ai failed, trying HuggingFace: {e}")
+            errors.append(f"watsonx.ai: {e}")
+
+    if HF_AVAILABLE:
+        try:
+            result = _query_huggingface(prompt, max_tokens)
+            logger.info("Granite response via HuggingFace Inference API")
+            return result
+        except Exception as e:
+            logger.error(f"HuggingFace also failed: {e}")
+            errors.append(f"HuggingFace: {e}")
+
+    msg = (
+        "No AI provider available. "
+        "Set WATSONX_API_KEY + WATSONX_PROJECT_ID (IBM Cloud — free tier) "
+        "or HF_TOKEN (HuggingFace — free, no credit card) "
+        "to enable AI match narratives."
+    )
+    if errors:
+        msg += " Errors: " + "; ".join(errors)
+    raise RuntimeError(msg)
 
 
 def generate_preview(team_a: str, team_b: str, prob_a: float, prob_draw: float, prob_b: float,

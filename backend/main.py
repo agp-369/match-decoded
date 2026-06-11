@@ -19,7 +19,7 @@ from model import predictor
 from granite import (
     generate_preview, generate_explain, generate_momentum,
     generate_docling_analysis, generate_legends,
-    WATSONX_AVAILABLE,
+    AI_AVAILABLE, WATSONX_AVAILABLE, HF_AVAILABLE,
 )
 from docling_parser import extract_match_details
 
@@ -28,11 +28,13 @@ from docling_parser import extract_match_details
 async def lifespan(app: FastAPI):
     loaded = predictor.load()
     print(f"Model loaded: {loaded}, teams: {len(predictor.get_team_names()) if loaded else 0}")
-    print(f"IBM watsonx.ai configured: {WATSONX_AVAILABLE}")
-    if WATSONX_AVAILABLE:
-        print(f"  Model: ibm/granite-3-8b-instruct")
+    print(f"AI providers — watsonx.ai: {WATSONX_AVAILABLE}, HuggingFace: {HF_AVAILABLE}")
+    if AI_AVAILABLE:
+        provider = "watsonx.ai" if WATSONX_AVAILABLE else "HuggingFace Inference API"
+        print(f"  Active provider: {provider} (model: ibm/granite-3-8b-instruct)")
     else:
-        print("  WARNING: watsonx.ai credentials not set. AI narrative features will return 503.")
+        print("  WARNING: No AI credentials set. AI narrative features will return 503.")
+        print("  Set WATSONX_API_KEY+WATSONX_PROJECT_ID or HF_TOKEN.")
     yield
 
 
@@ -79,11 +81,12 @@ def health():
         "status": "ok",
         "model_loaded": predictor._loaded,
         "teams_available": len(predictor.get_team_names()),
-        "watsonx_configured": WATSONX_AVAILABLE,
+        "ai_available": AI_AVAILABLE,
+        "active_provider": "watsonx.ai" if WATSONX_AVAILABLE else "HuggingFace Inference API" if HF_AVAILABLE else "none",
         "data_source": "31,161 real international matches (1990-2026)",
         "model_accuracy": "66.6% (XGBoost ensemble, 3-class)",
         "ibm_technologies": [
-            "IBM Granite 3-8B (watsonx.ai)",
+            "IBM Granite 3-8B (watsonx.ai + HuggingFace Inference API)",
             "LangChain (prompt templates)",
             "IBM Docling (PDF parsing)",
             "IBM Bob (code assistant)",
@@ -115,8 +118,8 @@ def preview_match(req: ExplainRequest):
     except (ValueError, RuntimeError) as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    if not WATSONX_AVAILABLE:
-        raise HTTPException(status_code=503, detail="IBM watsonx.ai not configured. AI narrative unavailable. Set WATSONX_API_KEY and WATSONX_PROJECT_ID.")
+    if not AI_AVAILABLE:
+        raise HTTPException(status_code=503, detail="AI narrative unavailable. Set WATSONX_API_KEY+WATSONX_PROJECT_ID (IBM watsonx.ai) or HF_TOKEN (HuggingFace, free) to enable.")
 
     narrative = generate_preview(
         result["team_a"], result["team_b"],
@@ -134,8 +137,8 @@ def explain_decision(req: ExplainRequest):
     except (ValueError, RuntimeError) as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    if not WATSONX_AVAILABLE:
-        raise HTTPException(status_code=503, detail="IBM watsonx.ai not configured.")
+    if not AI_AVAILABLE:
+        raise HTTPException(status_code=503, detail="AI narrative unavailable. Set WATSONX_API_KEY+WATSONX_PROJECT_ID or HF_TOKEN.")
 
     importances = predictor.get_feature_importances()
     top_features = [f["name"] for f in importances[:3]]
@@ -159,8 +162,8 @@ def momentum_analysis(req: ExplainRequest):
     except (ValueError, RuntimeError) as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    if not WATSONX_AVAILABLE:
-        raise HTTPException(status_code=503, detail="IBM watsonx.ai not configured.")
+    if not AI_AVAILABLE:
+        raise HTTPException(status_code=503, detail="AI narrative unavailable. Set WATSONX_API_KEY+WATSONX_PROJECT_ID or HF_TOKEN.")
 
     analysis = generate_momentum(
         result["team_a"], result["team_b"],
@@ -184,8 +187,8 @@ def legends_matchup(req: LegendsRequest):
     except Exception as e:
         raise HTTPException(status_code=503, detail=str(e))
 
-    if not WATSONX_AVAILABLE:
-        raise HTTPException(status_code=503, detail="IBM watsonx.ai not configured.")
+    if not AI_AVAILABLE:
+        raise HTTPException(status_code=503, detail="AI narrative unavailable. Set WATSONX_API_KEY+WATSONX_PROJECT_ID or HF_TOKEN.")
 
     narrative = generate_legends(
         req.team_a, req.team_b, req.era_a, req.era_b,

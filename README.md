@@ -17,7 +17,7 @@ license: apache-2.0
 
 **IBM AI Builders Challenge 2026 · June Football Challenge**
 
-[![IBM watsonx.ai](https://img.shields.io/badge/IBM-watsonx.ai-00b4ff)](https://cloud.ibm.com)
+[![IBM watsonx.ai](https://img.shields.io/badge/IBM-watsonx.ai-00b4ff)](https://cloud.ibm.com) [![HuggingFace](https://img.shields.io/badge/🤗-HuggingFace%20API-FFD21E)](https://huggingface.co/ibm-granite/granite-3-8b-instruct)
 [![IBM Granite](https://img.shields.io/badge/IBM-Granite_3--8B-00b4ff)](https://ibm.com/granite)
 [![LangChain](https://img.shields.io/badge/LangChain-IBM-00b4ff)](https://python.langchain.com/)
 [![Docling](https://img.shields.io/badge/IBM-Docling-00b4ff)](https://github.com/IBM/docling)
@@ -34,7 +34,7 @@ license: apache-2.0
 
 **🌍 Social impact through access** — Football intelligence locked inside broadcast trucks for 154 years. Now free on any device, any country, no login required. Democratizing sports analytics.
 
-**⚡ Transparent AI** — No black box. Every prediction is traceable to 12 specific features. Every narrative is generated live by IBM Granite via watsonx.ai. No canned text. No fallbacks.
+**⚡ Transparent AI** — No black box. Every prediction is traceable to 12 specific features. Every narrative is generated live by IBM Granite. No canned text. No fallbacks.
 
 ---
 
@@ -47,7 +47,7 @@ license: apache-2.0
 
 ## 🏟️ The Problem
 
-For 154 years and 49,000 international matches, match intelligence lived inside analytics departments and broadcast trucks. **Match Decoded gives every fan an AI analyst — powered by IBM Granite on watsonx.ai — to decode any match, in plain English, in seconds.**
+For 154 years and 49,000 international matches, match intelligence lived inside analytics departments and broadcast trucks. **Match Decoded gives every fan an AI analyst — powered by IBM Granite — to decode any match, in plain English, in seconds.**
 
 ---
 
@@ -67,14 +67,19 @@ For 154 years and 49,000 international matches, match intelligence lived inside 
 
 | # | Technology | How We Use It |
 |---|---|---|
-| 1 | **IBM Granite 3-8B (watsonx.ai)** | Core AI engine via IBM watsonx.ai SDK — all narratives generated live |
+| 1 | **IBM Granite 3-8B** | AI engine via watsonx.ai SDK (primary) or HuggingFace API (fallback) |
 | 2 | **LangChain** | Structured prompt engineering across 5 prompt templates |
 | 3 | **IBM Docling** | PDF match report parser with PyMuPDF fallback |
 | 4 | **IBM Bob** | AI code assistant used throughout development |
 
-### Why watsonx.ai?
+### AI Provider Strategy
 
-Every line of analysis is **Granite-generated via IBM watsonx.ai**, not templated or hardcoded. No fallback text. If watsonx.ai is unreachable, the API returns a clear 503 so the user knows the AI engine is unavailable — no silent degradation to canned text.
+| Provider | Status | Credentials Needed |
+|---|---|---|
+| **IBM watsonx.ai** (primary) | ✅ Production | `WATSONX_API_KEY` + `WATSONX_PROJECT_ID` |
+| **HuggingFace Inference API** (fallback) | ✅ Demo/Dev | `HF_TOKEN` (free, no credit card) |
+
+Both serve the **same IBM Granite 3-8B-Instruct** model with identical prompts. The app tries watsonx.ai first; if unavailable, it transparently falls back to HuggingFace. No hardcoded text. No silent degradation. If neither is configured, the API returns a clear 503.
 
 ### Real Data, Not Synthetic
 
@@ -106,8 +111,10 @@ Fans (Web + Mobile)
                 |
                 +---> LangChain Prompt Templates (5 types)
                 |
-                +---> IBM Granite 3-8B (watsonx.ai)
-                |     All narratives generated live — no fallbacks
+                +---> IBM Granite 3-8B
+                |     ├── watsonx.ai (primary)
+                |     └── HuggingFace API (fallback)
+                |     All narratives generated live — no hardcoded text
                 |
                 +---> IBM Docling Parser
                       PDF match report → text → Granite analysis
@@ -120,15 +127,23 @@ Fans (Web + Mobile)
 ### Prerequisites
 - Python 3.11+
 - Node.js 20+
-- IBM watsonx.ai API key + project ID ([Get free](https://cloud.ibm.com))
+- **AI credentials** (pick one):
+  - **IBM watsonx.ai** (production): [IBM Cloud](https://cloud.ibm.com) — free tier, requires credit card
+  - **HuggingFace** (dev, no credit card): [Access Token](https://huggingface.co/settings/tokens)
 
 ### Backend
 ```bash
 git clone https://github.com/agp-369/match-decoded.git
 cd match-decoded
 pip install -r requirements.txt
-set WATSONX_API_KEY=your-key     # Windows
+
+# Option A: IBM watsonx.ai (primary)
+set WATSONX_API_KEY=your-key
 set WATSONX_PROJECT_ID=your-id
+
+# Option B: HuggingFace (fallback, no credit card)
+set HF_TOKEN=your-huggingface-token
+
 uvicorn backend.main:app --host 0.0.0.0 --port 8000
 ```
 
@@ -164,7 +179,7 @@ python -m pytest tests/ -v
 
 | Technology | Purpose |
 |---|---|
-| **IBM Granite 3-8B (watsonx.ai)** | AI match explainability — live, no fallbacks |
+| **IBM Granite 3-8B** (watsonx.ai + 🤗 API) | AI match explainability — dual-provider, live, no hardcoded text |
 | **LangChain** | Structured prompt engineering (5 templates) |
 | **IBM Docling** | PDF match report parsing |
 | **IBM Bob** | AI code assistant |
