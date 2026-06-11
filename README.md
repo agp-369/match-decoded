@@ -146,33 +146,17 @@ Every prediction is fully transparent. View 8 feature importance bars, Granite's
                 └───────────┘
 ```
 
----
 
-## 📺 Partnership Potential
 
-| Partner | How Match Decoded Could Extend Their Experience |
-|---|---|
-| **FIFA / World Cup** | Real-time match explainability for broadcasters — "Why the favourite is struggling" |
-| **UEFA Champions League** | Post-match tactical breakdowns powered by Granite for the UEFA website and app |
-| **ESPN / Sky Sports** | AI-generated pre-match and post-match analysis segments — like ESPN Fantasy Football insights, but for real matches |
-| **Wimbledon (IBM Partner)** | Extend AI Highlights with "Why This Moment Mattered" — Granite explaining the turning point |
-| **The Masters (IBM Partner)** | "Why the leaderboard shifted" — Granite analysis of tournament dynamics |
-| **Premier League** | Match-by-match fan education — helping global fans understand tactical narratives |
-| **Betting Operators** | Explainable odds — "Why the model disagrees with the market" for responsible gambling |
-
----
-
-## 🌍 Social Impact — Knowledge Is a Right, Not a Privilege
+## 🌍 Accessible to Everyone
 
 | CSR Principle | How Match Decoded Delivers |
 |---|---|
 | **Democratizing access** | Free, no login, no paywall. Works on any phone or browser — a fan in any country gets the same AI analyst as a broadcaster |
 | **Education through AI** | Teaches fans to think critically about match analysis — "Why is Argentina favoured?" becomes a learning moment about form, history, and context |
 | **Responsible, transparent AI** | Every prediction comes with a full decision trace — 8 feature importance bars + Granite's natural language reasoning. No black box. The fan can verify the AI's thinking |
-| **Global reach** | Football is the world's game (3.5B fans). Web app means zero installation. Works in low-bandwidth environments |
-| **Built with IBM SkillsBuild mindset** | The same open, accessible philosophy — take powerful technology and put it directly into the hands of people who need it most |
-
-> *"The goal isn't to predict scores. It's to help a billion fans understand the game they love — starting with the question: WHY."*
+| **Global reach** | Football is the world's game (3.5B fans). Web app means zero installation |
+| **Built with open access** | Free, no login, works on any device — the same experience for every fan |
 
 ---
 
