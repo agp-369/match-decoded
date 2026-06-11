@@ -60,7 +60,8 @@ export default function App() {
         <div className="hero-badge">World Cup · International Football</div>
         <h1 className="hero-title">Match Decoded</h1>
         <p className="hero-subtitle">
-          <strong>Understand the game.</strong> Explain the moments.
+          <strong>Every fan deserves to know why.</strong><br/>
+          <span style={{fontSize:'0.8em', fontWeight:400, opacity:0.8}}>AI-powered match analysis — from the stadium to your screen</span>
         </p>
         <div className="tech-row">
           <span className="tech-badge">✦ IBM Granite</span>
