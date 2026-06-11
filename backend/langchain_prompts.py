@@ -1,8 +1,8 @@
 """
 LangChain prompt templates for Match Decoded — IBM Granite integration
 """
-from langchain.prompts import ChatPromptTemplate
-from langchain.schema import SystemMessage, HumanMessage
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.messages import SystemMessage, HumanMessage
 
 SYSTEM_PROMPT = """You are Match Decoded, a football AI explainer powered by IBM Granite. Your role is to explain soccer matches to fans in clear, engaging language.
 
