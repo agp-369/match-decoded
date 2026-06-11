@@ -8,7 +8,7 @@ build/
 .venv/
 venv/
 env/
-models/*.pkl
+# models/*.pkl  # committed for Render deployment
 .DS_Store
 
 .vercel
