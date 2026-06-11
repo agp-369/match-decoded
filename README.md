@@ -42,7 +42,6 @@ license: apache-2.0
 | Frontend | URL |
 |---|---|
 | **React App (Primary)** | [match-decoded.vercel.app](https://match-decoded.vercel.app) |
-| **Streamlit (HF Spaces)** | [agp9-match-decoded.hf.space](https://agp9-match-decoded.hf.space) |
 
 ---
 
@@ -98,8 +97,7 @@ Fans (Web + Mobile)
     +---> React Frontend (Vercel)
     |       Pre-Match, What-If, Legends, Decision Trace, Docling Upload
     |
-    +---> Streamlit App (HF Spaces)
-    |
+
     +---> FastAPI Backend (Render)
             /predict, /explain, /momentum, /legends, /docling/analyze, /health
                 |
