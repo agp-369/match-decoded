@@ -11,6 +11,12 @@ export interface Prediction {
 
 export interface FeatureImportance { name: string; importance: number; }
 
+export const TEAM_FLAGS: Record<string, string> = {
+  Brazil: '🇧🇷', Argentina: '🇦🇷', Germany: '🇩🇪', France: '🇫🇷',
+  England: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', Spain: '🇪🇸', Italy: '🇮🇹',
+  Netherlands: '🇳🇱', Portugal: '🇵🇹', Uruguay: '🇺🇾',
+};
+
 export const TEAM_STATS: Record<string, TeamStats> = {
   Brazil: { winrate: 0.632, goal_avg: 2.17, form: 0.30, matches: 1060 },
   Argentina: { winrate: 0.552, goal_avg: 1.89, form: 0.60, matches: 1069 },
@@ -25,6 +31,10 @@ export const TEAM_STATS: Record<string, TeamStats> = {
 };
 
 export const TEAMS = Object.keys(TEAM_STATS);
+
+export function teamFlag(name: string): string {
+  return TEAM_FLAGS[name] || '⚽';
+}
 
 export const FEATURES: FeatureImportance[] = [
   { name: 'team_b_winrate', importance: 0.221 },
@@ -70,18 +80,18 @@ export function fmtPct(v: number) { return `${(v * 100).toFixed(1)}%`; }
 
 export function previewFallback(a: string, b: string, pa: number, pd: number, pb: number): string {
   const edge = pa > pb ? a : b;
-  return `Based on historical data, ${edge} enters as the favourite. ${a} has a ${fmtPct(pa)} chance of winning, while ${b} sits at ${fmtPct(pb)}. The draw probability is ${fmtPct(pd)}.`;
+  return `${edge} enters as the favourite with a ${fmtPct(Math.max(pa, pb))} win probability. ${a} sits at ${fmtPct(pa)} while ${b} holds ${fmtPct(pb)}. The draw probability is ${fmtPct(pd)}.`;
 }
 
 export function momentumFallback(a: string, b: string, pa: number, pb: number): string {
   const diff = Math.abs(pa - pb) * 100;
-  return `With ${a} at ${fmtPct(pa)} and ${b} at ${fmtPct(pb)}, the model suggests ${diff < 10 ? 'a tight contest' : 'one team has a clear edge'}. Momentum in football often shifts through an early goal, a red card, or a tactical substitution.`;
+  return `With ${a} at ${fmtPct(pa)} and ${b} at ${fmtPct(pb)}, this match shapes up as ${diff < 10 ? 'a tightly contested battle where momentum swings will be decisive' : 'a fixture with a clear favourite, though football thrives on surprises'}. Key momentum shifts often arrive through an early goal, a tactical substitution, or a sending-off.`;
 }
 
 export function explainFallback(): string {
-  return `The prediction was driven primarily by team_b_winrate. The model analyzed 8 factors including historical win rates, goal averages, recent form, venue, and tournament importance. Accuracy: 55.8% on unseen data (vs 47.2% baseline).`;
+  return `The prediction is driven primarily by the teams' historical win rates and goal-scoring averages. The Random Forest model weighs 8 factors including recent form, venue, and tournament stage. Model accuracy: 55.8% on unseen test data (beating the 47.2% always-predict-favourite baseline).`;
 }
 
 export function legendsFallback(a: string, b: string, sa: TeamStats, sb: TeamStats): string {
-  return `${a} has a win rate of ${fmtPct(sa.winrate)} across ${sa.matches} matches, averaging ${sa.goal_avg.toFixed(2)} goals per game. ${b} has a win rate of ${fmtPct(sb.winrate)} across ${sb.matches} matches, averaging ${sb.goal_avg.toFixed(2)} goals per game. While cross-era comparison is subjective, ${sa.winrate > sb.winrate ? a : b} has the statistical edge.`;
+  return `${a} (${fmtPct(sa.winrate)} win rate, ${sa.goal_avg.toFixed(2)} goals/game across ${sa.matches} matches) versus ${b} (${fmtPct(sb.winrate)} win rate, ${sb.goal_avg.toFixed(2)} goals/game across ${sb.matches} matches). While eras differ, the statistical edge belongs to ${sa.winrate > sb.winrate ? a : b}.`;
 }

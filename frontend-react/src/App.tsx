@@ -8,12 +8,14 @@ import DoclingTab from './components/DoclingTab'
 
 type Tab = 'prematch' | 'whatif' | 'legends' | 'explain' | 'docling'
 const TABS: { key: Tab; label: string }[] = [
-  { key: 'prematch', label: '🔮 Pre-Match Preview' },
-  { key: 'whatif', label: '⚡ What-If Simulator' },
-  { key: 'legends', label: '⚔️ Legends Matchup' },
-  { key: 'explain', label: '🧠 Decision Trace' },
+  { key: 'prematch', label: '📊 Pre-Match Preview' },
+  { key: 'whatif', label: '🔄 What-If Simulator' },
+  { key: 'legends', label: '🏆 Legends Matchup' },
+  { key: 'explain', label: '🔍 Decision Trace' },
   { key: 'docling', label: '📄 Docling Analysis' },
 ]
+
+const totalMatches = Object.values(TEAM_STATS).reduce((s, t) => s + t.matches, 0)
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('prematch')
@@ -23,33 +25,47 @@ export default function App() {
 
   useEffect(() => {
     fetch('http://localhost:8000/health', { signal: AbortSignal.timeout(3000) })
-      .then(r => { setApiAvailableInternal(r.ok) })
+      .then(r => setApiAvailableInternal(r.ok))
       .catch(() => setApiAvailableInternal(false))
   }, [])
 
   return (
     <div className="container">
       {}
-      <header className="header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <span style={{ fontSize: '2rem' }}>⚽</span>
-          <div>
-            <span className="header-title">Match Decoded</span>
-            <div style={{ marginTop: '0.2rem' }}>
-              <span className="tech-badge">IBM Granite</span>
-              <span className="tech-badge">LangChain</span>
-              <span className="tech-badge">Docling</span>
-              <span className="tech-badge">Bob</span>
+      <section className="hero">
+        <span className="hero-icon">⚽</span>
+        <h1 className="hero-title">Match Decoded</h1>
+        <p className="hero-subtitle">
+          <strong>Understand the game.</strong> Explain the moments.
+        </p>
+        <div className="tech-row">
+          <span className="tech-badge">✦ IBM Granite</span>
+          <span className="tech-badge">✦ LangChain</span>
+          <span className="tech-badge">✦ IBM Docling</span>
+          <span className="tech-badge">✦ IBM Bob</span>
+        </div>
+        {}
+        <div className="hero-stats">
+          <div className="hero-stat">
+            <div className="hero-stat-value">{totalMatches.toLocaleString()}</div>
+            <div className="hero-stat-label">Matches Analyzed</div>
+          </div>
+          <div className="hero-stat">
+            <div className="hero-stat-value">{Object.keys(TEAM_STATS).length}</div>
+            <div className="hero-stat-label">Teams Tracked</div>
+          </div>
+          <div className="hero-stat">
+            <div className="hero-stat-value">55.8%</div>
+            <div className="hero-stat-label">Model Accuracy</div>
+          </div>
+          <div className="hero-stat">
+            <div className="hero-stat-value" style={{ fontSize: '0.9rem', fontFamily: 'var(--font)' }}>
+              {apiAvailable === null ? '···' : apiAvailable ? '✓ Online' : '✦ Standalone'}
             </div>
+            <div className="hero-stat-label">System Status</div>
           </div>
         </div>
-        <div className="header-tagline">
-          <strong>Understand the game.</strong> Explain the moments.<br />
-          <span style={{ fontSize: '0.75rem', color: apiAvailable === null ? 'var(--text-dim)' : apiAvailable ? '#4ade80' : '#ff6b6b' }}>
-            {apiAvailable === null ? '· checking API' : apiAvailable ? '· API online' : '· Standalone mode'}
-          </span>
-        </div>
-      </header>
+      </section>
 
       {}
       <div className="tabs">
@@ -66,21 +82,10 @@ export default function App() {
       {tab === 'docling' && <DoclingTab />}
 
       {}
-      <div className="glass-card" style={{ marginTop: '1.5rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-          <span style={{ color: 'var(--text-dim)', fontSize: '0.75rem' }}>Data: historical international football (1872–2024, 44k+ matches)</span>
-          <span style={{ color: 'var(--text-dim)', fontSize: '0.75rem' }}>
-            <span className="tech-badge">IBM Granite 3.1-2B</span>
-            <span className="tech-badge">LangChain</span>
-            <span className="tech-badge">Docling</span>
-            <span className="tech-badge">Random Forest (55.8%)</span>
-          </span>
-        </div>
-      </div>
-
-      {}
       <footer className="footer">
-        Match Decoded &middot; IBM AI Builders Challenge &middot; Built with IBM Granite &middot; <a href="https://github.com/agp-369/match-decoded" style={{ color: 'var(--accent)', textDecoration: 'none' }}>GitHub</a>
+        Match Decoded <span className="dot">·</span> IBM AI Builders Challenge
+        <span className="dot">·</span> Built with IBM Granite 3.1-2B
+        <span className="dot">·</span> <a href="https://github.com/agp-369/match-decoded" target="_blank" rel="noopener">GitHub</a>
       </footer>
     </div>
   )
