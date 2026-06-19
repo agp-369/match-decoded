@@ -8,7 +8,7 @@ const TACTICAL_QS = [
   'What formation and style would each team play? How does the battle unfold?',
 ]
 
-interface Props { apiAvailable: boolean; setApiAvailable: (v: boolean) => void; lang?: string }
+interface Props { apiAvailable: boolean; lang?: string }
 
 export default function TacticalAnalysisTab({ apiAvailable, lang = 'en' }: Props) {
   const [teams, setTeams] = useState<string[]>(['Brazil', 'Argentina', 'England', 'France', 'Germany'])

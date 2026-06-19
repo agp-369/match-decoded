@@ -11,7 +11,7 @@ const VAR_SCENARIOS = [
   'A goal is ruled out for a foul in the buildup spotted by VAR',
 ]
 
-interface Props { apiAvailable: boolean; setApiAvailable: (v: boolean) => void; lang?: string }
+interface Props { apiAvailable: boolean; lang?: string }
 
 export default function VARExplainedTab({ apiAvailable, lang = 'en' }: Props) {
   const [teams, setTeams] = useState<string[]>(['Brazil', 'Argentina', 'England', 'France', 'Germany'])

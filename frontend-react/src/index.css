@@ -774,6 +774,21 @@ input[type="range"]::-moz-range-thumb {
 
 hr { border: none; border-top: 1px solid rgba(240, 244, 255, 0.04); margin: 0.8rem 0; }
 
+/* ─── Offline Badge ─── */
+.offline-badge {
+  display: inline-block;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 4px;
+  padding: 0.1rem 0.4rem;
+  font-size: 0.6rem;
+  color: #fca5a5;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  vertical-align: middle;
+}
+
 /* ─── Language Selector ─── */
 .lang-btn {
   background: rgba(245, 158, 11, 0.08);

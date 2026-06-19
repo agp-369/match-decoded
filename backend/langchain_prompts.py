@@ -140,3 +140,13 @@ TEACH_TEMPLATE = ChatPromptTemplate.from_messages([
         "or World Cup history. Keep it under 150 words."
     )),
 ])
+
+DOCLING_ANALYSIS_TEMPLATE = ChatPromptTemplate.from_messages([
+    SystemMessage(content=_sys()),
+    HumanMessage(content=(
+        "Analyze this football match report extracted via IBM Docling:\n\n"
+        "{report_text}\n\n"
+        "Provide a tactical breakdown: key moments, team performance, "
+        "and what decided the match. Write for a football fan."
+    )),
+])

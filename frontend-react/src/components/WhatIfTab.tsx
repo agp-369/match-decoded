@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { cachedTeams, teamFlag, apiPost, fetchMomentum, fmtPct, generateMomentum, type Prediction, type MomentumPoint } from '../api'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
-interface Props { apiAvailable: boolean; setApiAvailable: (v: boolean) => void; lang?: string }
+interface Props { apiAvailable: boolean; lang?: string }
 
 function TeamSelect({ value, onChange, exclude, teams }: { value: string; onChange: (v: string) => void; exclude: string; teams: string[] }) {
   const [open, setOpen] = useState(false)
@@ -30,7 +30,7 @@ function TeamSelect({ value, onChange, exclude, teams }: { value: string; onChan
   )
 }
 
-export default function WhatIfTab({ apiAvailable, setApiAvailable, lang }: Props) {
+export default function WhatIfTab({ apiAvailable, lang }: Props) {
   const [teams, setTeams] = useState<string[]>(['Brazil', 'Argentina', 'England', 'France', 'Germany'])
   const [a, setA] = useState('Brazil')
   const [b, setB] = useState('England')
@@ -64,8 +64,9 @@ export default function WhatIfTab({ apiAvailable, setApiAvailable, lang }: Props
   const teamFormA = basePred?.stats_a?.form ?? 0.5
   const teamFormB = basePred?.stats_b?.form ?? 0.5
 
+  const offlineFallback = !apiAvailable && !basePred
   const p = (() => {
-    if (!basePred) return { team_a_win_prob: 0.4, draw_prob: 0.25, team_b_win_prob: 0.35 }
+    if (!basePred) return null
     const adjA = basePred.team_a_win_prob * (formA / teamFormA)
     const adjB = basePred.team_b_win_prob * (formB / teamFormB)
     const adjD = basePred.draw_prob
@@ -90,7 +91,8 @@ export default function WhatIfTab({ apiAvailable, setApiAvailable, lang }: Props
     setLoading(false)
   }
 
-  const momentumData = showMomentum
+  const isClientMomentum = momentum.length === 0 && p !== null
+  const momentumData = showMomentum && p
     ? (momentum.length > 0 ? momentum : generateMomentum(p.team_a_win_prob, p.draw_prob, p.team_b_win_prob))
     : []
 
@@ -136,36 +138,42 @@ export default function WhatIfTab({ apiAvailable, setApiAvailable, lang }: Props
           </div>
         </div>
 
-        <div className="scoreboard" style={{ marginTop: '1rem' }}>
-          <div className="scoreboard-team">
-            <span className="flag">{teamFlag(a)}</span>
-            <div className="name" style={{ fontSize: '0.8rem' }}>{a}</div>
-            <motion.div className="prob" style={{ color: '#22c55e' }}
-              key={`wa-${formA.toFixed(2)}`}
-              initial={{ scale: 0.8 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 200 }}>
-              {(p.team_a_win_prob * 100).toFixed(1)}%
-            </motion.div>
+        {offlineFallback ? (
+          <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+            <span className="offline-badge">API Offline</span> — Start the backend to enable the What-If simulator.
           </div>
-          <div className="scoreboard-divider" />
-          <div>
-            <div style={{ color: '#64748b', fontSize: '0.75rem' }}>Draw</div>
-            <motion.div style={{ color: '#94a3b8', fontSize: '1rem', fontWeight: 700 }}
-              key={`wd-${formA.toFixed(2)}`}
-              initial={{ scale: 0.8 }} animate={{ scale: 1 }}>
-              {(p.draw_prob * 100).toFixed(1)}%
-            </motion.div>
+        ) : p ? (
+          <div className="scoreboard" style={{ marginTop: '1rem' }}>
+            <div className="scoreboard-team">
+              <span className="flag">{teamFlag(a)}</span>
+              <div className="name" style={{ fontSize: '0.8rem' }}>{a}</div>
+              <motion.div className="prob" style={{ color: '#22c55e' }}
+                key={`wa-${formA.toFixed(2)}`}
+                initial={{ scale: 0.8 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 200 }}>
+                {(p.team_a_win_prob * 100).toFixed(1)}%
+              </motion.div>
+            </div>
+            <div className="scoreboard-divider" />
+            <div>
+              <div style={{ color: '#64748b', fontSize: '0.75rem' }}>Draw</div>
+              <motion.div style={{ color: '#94a3b8', fontSize: '1rem', fontWeight: 700 }}
+                key={`wd-${formA.toFixed(2)}`}
+                initial={{ scale: 0.8 }} animate={{ scale: 1 }}>
+                {(p.draw_prob * 100).toFixed(1)}%
+              </motion.div>
+            </div>
+            <div className="scoreboard-divider" />
+            <div className="scoreboard-team">
+              <span className="flag">{teamFlag(b)}</span>
+              <div className="name" style={{ fontSize: '0.8rem' }}>{b}</div>
+              <motion.div className="prob" style={{ color: '#ef4444' }}
+                key={`wb-${formB.toFixed(2)}`}
+                initial={{ scale: 0.8 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 200 }}>
+                {(p.team_b_win_prob * 100).toFixed(1)}%
+              </motion.div>
+            </div>
           </div>
-          <div className="scoreboard-divider" />
-          <div className="scoreboard-team">
-            <span className="flag">{teamFlag(b)}</span>
-            <div className="name" style={{ fontSize: '0.8rem' }}>{b}</div>
-            <motion.div className="prob" style={{ color: '#ef4444' }}
-              key={`wb-${formB.toFixed(2)}`}
-              initial={{ scale: 0.8 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 200 }}>
-              {(p.team_b_win_prob * 100).toFixed(1)}%
-            </motion.div>
-          </div>
-        </div>
+        ) : null}
       </div>
 
       <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -182,6 +190,7 @@ export default function WhatIfTab({ apiAvailable, setApiAvailable, lang }: Props
           initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
           <div className="section-heading" style={{ fontSize: '0.95rem' }}>
             <span className="accent">●</span> Match Momentum Timeline
+            {isClientMomentum && <span className="offline-badge" style={{ marginLeft: '0.5rem' }}>Simulated (client-side)</span>}
           </div>
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={momentumData}>

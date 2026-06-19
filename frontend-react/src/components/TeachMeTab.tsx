@@ -15,7 +15,7 @@ const FAQ_QUESTIONS = [
   { q: 'How does the World Cup knockout bracket work?', icon: '🏆' },
 ]
 
-interface Props { apiAvailable: boolean; setApiAvailable: (v: boolean) => void; lang?: string }
+interface Props { apiAvailable: boolean; lang?: string }
 
 export default function TeachMeTab({ apiAvailable, lang = 'en' }: Props) {
   const [question, setQuestion] = useState(FAQ_QUESTIONS[0].q)

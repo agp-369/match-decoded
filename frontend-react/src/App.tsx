@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { fetchHealth, fetchWorldCupGroups, cachedTeams, getAllTeams } from './api'
+import { fetchWorldCupGroups, cachedTeams, getAllTeams } from './api'
 import PreMatchTab from './components/PreMatchTab'
 import WhatIfTab from './components/WhatIfTab'
 import LegendsTab from './components/LegendsTab'
@@ -182,14 +182,14 @@ export default function App() {
             ))}
           </div>
 
-          {tab === 'prematch' && <PreMatchTab apiAvailable={isOnline} setApiAvailable={setApiAvailable} wcMode={wcMode} lang={lang} />}
-          {tab === 'tactical' && <TacticalAnalysisTab apiAvailable={isOnline} setApiAvailable={setApiAvailable} lang={lang} />}
-          {tab === 'var' && <VARExplainedTab apiAvailable={isOnline} setApiAvailable={setApiAvailable} lang={lang} />}
-          {tab === 'story' && <MatchStoryTab apiAvailable={isOnline} setApiAvailable={setApiAvailable} lang={lang} />}
-          {tab === 'whatif' && <WhatIfTab apiAvailable={isOnline} setApiAvailable={setApiAvailable} lang={lang} />}
-          {tab === 'legends' && <LegendsTab apiAvailable={isOnline} setApiAvailable={setApiAvailable} lang={lang} />}
-          {tab === 'explain' && <ExplainTab apiAvailable={isOnline} setApiAvailable={setApiAvailable} lang={lang} />}
-          {tab === 'teach' && <TeachMeTab apiAvailable={isOnline} setApiAvailable={setApiAvailable} lang={lang} />}
+          {tab === 'prematch' && <PreMatchTab apiAvailable={isOnline} wcMode={wcMode} lang={lang} />}
+          {tab === 'tactical' && <TacticalAnalysisTab apiAvailable={isOnline} lang={lang} />}
+          {tab === 'var' && <VARExplainedTab apiAvailable={isOnline} lang={lang} />}
+          {tab === 'story' && <MatchStoryTab apiAvailable={isOnline} lang={lang} />}
+          {tab === 'whatif' && <WhatIfTab apiAvailable={isOnline} lang={lang} />}
+          {tab === 'legends' && <LegendsTab apiAvailable={isOnline} lang={lang} />}
+          {tab === 'explain' && <ExplainTab apiAvailable={isOnline} lang={lang} />}
+          {tab === 'teach' && <TeachMeTab apiAvailable={isOnline} lang={lang} />}
           {tab === 'docling' && <DoclingTab />}
 
           <footer className="footer">

@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { cachedTeams, teamFlag, apiPost, fetchMomentum, fmtPct, generateMomentum, type FeatureImportance, type MomentumPoint } from '../api'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
-interface Props { apiAvailable: boolean; setApiAvailable: (v: boolean) => void; lang?: string }
+interface Props { apiAvailable: boolean; lang?: string }
 
 function TeamSelect({ value, onChange, exclude, teams }: { value: string; onChange: (v: string) => void; exclude: string; teams: string[] }) {
   const [open, setOpen] = useState(false)
@@ -30,7 +30,7 @@ function TeamSelect({ value, onChange, exclude, teams }: { value: string; onChan
   )
 }
 
-export default function ExplainTab({ apiAvailable, setApiAvailable, lang }: Props) {
+export default function ExplainTab({ apiAvailable, lang }: Props) {
   const [teams, setTeams] = useState<string[]>(['Brazil', 'Argentina', 'England', 'France', 'Germany'])
   const [a, setA] = useState('Brazil')
   const [b, setB] = useState('Argentina')
@@ -86,9 +86,10 @@ export default function ExplainTab({ apiAvailable, setApiAvailable, lang }: Prop
     setLoading(false)
   }
 
-  const probs = prediction || { a: 0.423, d: 0.252, b: 0.325 }
-  const momentumData = showTimeline
-    ? (momentum.length > 0 ? momentum : generateMomentum(probs.a, probs.d, probs.b))
+  const offlineMode = !apiAvailable && !prediction
+  const isClientMomentum = momentum.length === 0 && prediction !== null
+  const momentumData = showTimeline && prediction
+    ? (momentum.length > 0 ? momentum : generateMomentum(prediction.a, prediction.d, prediction.b))
     : []
 
   return (
@@ -162,6 +163,7 @@ export default function ExplainTab({ apiAvailable, setApiAvailable, lang }: Prop
           initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
           <div className="section-heading" style={{ fontSize: '0.95rem' }}>
             <span className="accent">●</span> Probability Timeline
+            {isClientMomentum && <span className="offline-badge" style={{ marginLeft: '0.5rem' }}>Simulated (client-side)</span>}
           </div>
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={momentumData}>

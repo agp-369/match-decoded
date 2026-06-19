@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { apiPost } from '../api'
+
+const API = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 export default function DoclingTab() {
   const [file, setFile] = useState<File | null>(null)
@@ -13,12 +14,20 @@ export default function DoclingTab() {
     setError('')
     setResult('')
     try {
-      const text = await file.text()
-      const r = await apiPost<{ summary: string; narrative: string }>('/docling/analyze', { text })
-      if (r && r.narrative) setResult(r.narrative)
-      else setError('Backend unavailable — Docling requires the FastAPI backend to be running.')
-    } catch {
-      setError('Could not read file. Try a plain text or PDF match report.')
+      const formData = new FormData()
+      formData.append('file', file)
+      const r = await fetch(`${API}/docling/analyze`, { method: 'POST', body: formData })
+      if (!r.ok) {
+        const err = await r.text().catch(() => '')
+        throw new Error(err || `Server returned ${r.status}`)
+      }
+      const data = await r.json()
+      setResult(data.analysis || 'No analysis returned.')
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e)
+      setError(msg.includes('Failed to fetch')
+        ? 'Backend unavailable — start the FastAPI server.'
+        : msg)
     }
     setLoading(false)
   }
@@ -30,7 +39,7 @@ export default function DoclingTab() {
           <span className="accent">●</span> Docling Match Report Analysis
         </div>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1rem', lineHeight: 1.6 }}>
-          Upload a match report (PDF or TXT). IBM Docling parses the document, then Granite generates a tactical breakdown.
+          Upload a PDF match report. IBM Docling parses the document, then Granite generates a tactical breakdown.
         </p>
         <label className={`upload-zone${file ? ' has-file' : ''}`}>
           <input type="file" accept=".pdf,.txt" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) setFile(f) }} />
@@ -44,7 +53,7 @@ export default function DoclingTab() {
             <div>
               <span className="upload-icon">📄</span>
               <div className="upload-text">Drop a match report here or <strong>click to browse</strong></div>
-              <div style={{ color: 'var(--text-dim)', fontSize: '0.75rem', marginTop: '0.3rem' }}>Supports PDF and text files</div>
+              <div style={{ color: 'var(--text-dim)', fontSize: '0.75rem', marginTop: '0.3rem' }}>Supports PDF files</div>
             </div>
           )}
         </label>

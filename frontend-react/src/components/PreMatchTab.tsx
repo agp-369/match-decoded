@@ -10,7 +10,7 @@ const QUICK_MATCHUPS: [string, string][] = [
   ['England', 'France'], ['Croatia', 'Brazil'],
 ]
 
-interface Props { apiAvailable: boolean; setApiAvailable: (v: boolean) => void; wcMode: boolean; lang?: string }
+interface Props { apiAvailable: boolean; wcMode: boolean; lang?: string }
 
 function TeamSelect({ value, onChange, exclude, teams }: { value: string; onChange: (v: string) => void; exclude: string; teams: string[] }) {
   const [open, setOpen] = useState(false)
@@ -40,7 +40,7 @@ function TeamSelect({ value, onChange, exclude, teams }: { value: string; onChan
 const containerVar = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.05 } } }
 const itemVar = { hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }
 
-export default function PreMatchTab({ apiAvailable, setApiAvailable, wcMode, lang }: Props) {
+export default function PreMatchTab({ apiAvailable, wcMode, lang }: Props) {
   const [teams, setTeams] = useState<string[]>(['Brazil', 'Argentina', 'England', 'France', 'Germany'])
   const [a, setA] = useState('Brazil')
   const [b, setB] = useState('England')
@@ -95,6 +95,7 @@ export default function PreMatchTab({ apiAvailable, setApiAvailable, wcMode, lan
     setLoading(false)
   }
 
+  const offlineMode = !apiAvailable
   const p = pred
   const homeProb = p?.team_a_win_prob ?? 0.4
   const drawProb = p?.draw_prob ?? 0.25
@@ -132,6 +133,11 @@ export default function PreMatchTab({ apiAvailable, setApiAvailable, wcMode, lan
         </motion.div>
       </div>
 
+      {!p && apiAvailable === false && (
+        <motion.div variants={itemVar} style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+          <span className="offline-badge">API Offline</span> — Prediction unavailable. Start the backend to see live analysis.
+        </motion.div>
+      )}
       {p && (
         <motion.div variants={itemVar} className="glass-card gold-border">
           <div className="section-heading"><span className="accent">●</span> Prediction</div>

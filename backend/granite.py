@@ -205,9 +205,9 @@ def generate_legends(team_a: str, team_b: str, era_a: str, era_b: str,
     return _render(LEGENDS_TEMPLATE, lang,
         team_a=team_a, team_b=team_b, era_a=era_a, era_b=era_b,
         winrate_a=f"{stats_a['winrate']:.1%}", goal_avg_a=f"{stats_a['goal_avg']:.2f}",
-        matches_a=stats_a['matches'],
+        matches_a=stats_a.get('matches', stats_a.get('matches_played', 0)),
         winrate_b=f"{stats_b['winrate']:.1%}", goal_avg_b=f"{stats_b['goal_avg']:.2f}",
-        matches_b=stats_b['matches'],
+        matches_b=stats_b.get('matches', stats_b.get('matches_played', 0)),
     )
 
 

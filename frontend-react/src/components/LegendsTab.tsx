@@ -5,7 +5,7 @@ import {
 } from 'recharts'
 import { cachedTeams, teamFlag, apiPost, type TeamDetail } from '../api'
 
-interface Props { apiAvailable: boolean; setApiAvailable: (v: boolean) => void; lang?: string }
+interface Props { apiAvailable: boolean; lang?: string }
 
 function TeamSelect({ value, onChange, exclude, teams }: { value: string; onChange: (v: string) => void; exclude: string; teams: string[] }) {
   const [open, setOpen] = useState(false)
@@ -32,7 +32,7 @@ function TeamSelect({ value, onChange, exclude, teams }: { value: string; onChan
   )
 }
 
-export default function LegendsTab({ apiAvailable, setApiAvailable, lang }: Props) {
+export default function LegendsTab({ apiAvailable, lang }: Props) {
   const [teams, setTeams] = useState<string[]>(['Brazil', 'Argentina', 'England', 'France', 'Germany'])
   const [a, setA] = useState('Brazil')
   const [b, setB] = useState('Argentina')
