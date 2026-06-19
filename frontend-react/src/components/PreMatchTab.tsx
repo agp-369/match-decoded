@@ -40,7 +40,7 @@ function TeamSelect({ value, onChange, exclude, teams }: { value: string; onChan
 const containerVar = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.05 } } }
 const itemVar = { hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0 } }
 
-export default function PreMatchTab({ apiAvailable, setApiAvailable, wcMode }: Props) {
+export default function PreMatchTab({ apiAvailable, setApiAvailable, wcMode, lang }: Props) {
   const [teams, setTeams] = useState<string[]>(['Brazil', 'Argentina', 'England', 'France', 'Germany'])
   const [a, setA] = useState('Brazil')
   const [b, setB] = useState('England')

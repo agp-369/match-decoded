@@ -32,7 +32,7 @@ function TeamSelect({ value, onChange, exclude, teams }: { value: string; onChan
   )
 }
 
-export default function LegendsTab({ apiAvailable, setApiAvailable }: Props) {
+export default function LegendsTab({ apiAvailable, setApiAvailable, lang }: Props) {
   const [teams, setTeams] = useState<string[]>(['Brazil', 'Argentina', 'England', 'France', 'Germany'])
   const [a, setA] = useState('Brazil')
   const [b, setB] = useState('Argentina')
