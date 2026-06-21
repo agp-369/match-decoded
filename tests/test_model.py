@@ -1,6 +1,7 @@
 """Tests for Match Decoded prediction model (trained on 31,161 real matches)"""
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+import pytest
 import numpy as np
 import pandas as pd
 
@@ -85,6 +86,7 @@ class TestPredictions:
         home = self.predictor.predict('Brazil', 'Argentina', False, True)
         assert home['team_a_win_prob'] >= neutral['team_a_win_prob'] * 0.95
 
+    @pytest.mark.slow
     def test_predict_all_48_teams(self):
         teams = self.predictor.get_team_names()
         errors = []

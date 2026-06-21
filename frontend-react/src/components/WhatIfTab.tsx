@@ -75,7 +75,7 @@ export default function WhatIfTab({ apiAvailable, lang }: Props) {
   })()
 
   const run = async () => {
-    if (!a || !b || a === b) return
+    if (!a || !b || a === b || !p) return
     setLoading(true)
     setNarrative('')
     if (apiAvailable) {
