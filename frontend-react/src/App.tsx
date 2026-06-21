@@ -48,7 +48,7 @@ export default function App() {
     getAllTeams().then(teams => setTeamCount(teams.length))
     fetchWorldCupGroups()
     const ctrl = new AbortController()
-    const t = setTimeout(() => ctrl.abort(), 3000)
+    const t = setTimeout(() => ctrl.abort(), 60000)
     fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/health`, { signal: ctrl.signal })
       .then(async r => {
         clearTimeout(t)
