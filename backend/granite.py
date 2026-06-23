@@ -78,10 +78,8 @@ def _hf_chat(system: str, human: str, max_tokens: int) -> str:
     global _hf_working_model
     import time
 
-    messages = []
-    if system:
-        messages.append({"role": "system", "content": system})
-    messages.append({"role": "user", "content": human})
+    combined = f"{system}\n\n{human}" if system else human
+    messages = [{"role": "user", "content": combined}]
 
     models_to_try = [_hf_working_model] if _hf_working_model else []
     models_to_try += [m for m in HF_MODEL_IDS if m != _hf_working_model]
