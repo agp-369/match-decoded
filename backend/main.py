@@ -402,8 +402,6 @@ async def docling_analyze(file: UploadFile = File(...)):
         details = extract_match_details(tmp.name)
         if not details or not details.get("text"):
             raise HTTPException(status_code=422, detail="Could not extract text from PDF")
-        if not WATSONX_AVAILABLE:
-            raise HTTPException(status_code=503, detail="IBM watsonx.ai not configured.")
         analysis = generate_docling_analysis(details["text"])
         return {
             "filename": file.filename, "file_size": len(content),
