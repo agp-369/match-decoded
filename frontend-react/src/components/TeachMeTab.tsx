@@ -21,15 +21,18 @@ export default function TeachMeTab({ apiAvailable, lang = 'en' }: Props) {
   const [question, setQuestion] = useState(FAQ_QUESTIONS[0].q)
   const [answer, setAnswer] = useState('')
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const [customQ, setCustomQ] = useState('')
 
   const run = async (q: string) => {
     setQuestion(q)
     setLoading(true)
     setAnswer('')
+    setError('')
     if (apiAvailable) {
-      const r = await apiPost<{ explanation: string }>('/explain/teach', { question: q, lang })
-      if (r?.explanation) setAnswer(r.explanation)
+      const { data, error } = await apiPost<{ explanation: string }>('/explain/teach', { question: q, lang })
+      if (error) setError(error)
+      if (data?.explanation) setAnswer(data.explanation)
     }
     setLoading(false)
   }
@@ -67,8 +70,10 @@ export default function TeachMeTab({ apiAvailable, lang = 'en' }: Props) {
       </div>
 
       <div style={{ textAlign: 'center', color: 'var(--text-dim)', fontSize: '0.75rem', marginTop: '-0.3rem', marginBottom: '0.5rem' }}>
-        {loading ? 'Granite is thinking...' : (answer ? 'Answer from IBM Granite' : 'Select a question above')}
+        {loading ? 'Granite is thinking...' : (error ? 'AI unavailable' : (answer ? 'Answer from IBM Granite' : 'Select a question above'))}
       </div>
+
+      {error && <div className="error">{error}</div>}
 
       {answer && (
         <motion.div className="granite-box" style={{ marginTop: '0.5rem' }}

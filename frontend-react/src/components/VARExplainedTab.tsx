@@ -20,6 +20,7 @@ export default function VARExplainedTab({ apiAvailable, lang = 'en' }: Props) {
   const [scenario, setScenario] = useState(VAR_SCENARIOS[0])
   const [explanation, setExplanation] = useState('')
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     const all = cachedTeams().map(x => x.name)
@@ -32,11 +33,13 @@ export default function VARExplainedTab({ apiAvailable, lang = 'en' }: Props) {
     if (!a || !b || a === b) return
     setLoading(true)
     setExplanation('')
+    setError('')
     if (apiAvailable) {
-      const r = await apiPost<{ explanation: string }>('/explain/var', {
+      const { data, error } = await apiPost<{ explanation: string }>('/explain/var', {
         team_a: a, team_b: b, scenario, lang,
       })
-      if (r?.explanation) setExplanation(r.explanation)
+      if (error) setError(error)
+      if (data?.explanation) setExplanation(data.explanation)
     }
     setLoading(false)
   }
@@ -87,6 +90,8 @@ export default function VARExplainedTab({ apiAvailable, lang = 'en' }: Props) {
       <button className="btn-primary" onClick={run} disabled={loading} style={{ marginTop: '0.5rem' }}>
         {loading ? <><span className="spinner" /> Analyzing decision...</> : '⚖️ Explain with Granite'}
       </button>
+
+      {error && <div className="error">{error}</div>}
 
       {explanation && (
         <motion.div className="granite-box" style={{ marginTop: '0.8rem' }}

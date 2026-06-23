@@ -38,6 +38,7 @@ export default function ExplainTab({ apiAvailable, lang }: Props) {
   const [major, setMajor] = useState(true)
   const [narrative, setNarrative] = useState('')
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const [features, setFeatures] = useState<FeatureImportance[] | null>(null)
   const [prediction, setPrediction] = useState<{ a: number; d: number; b: number } | null>(null)
   const [showTimeline, setShowTimeline] = useState(false)
@@ -54,10 +55,11 @@ export default function ExplainTab({ apiAvailable, lang }: Props) {
     if (!apiAvailable || !ta || !tb || ta === tb) return
     apiPost<{ prediction: { team_a_win_prob: number; draw_prob: number; team_b_win_prob: number }; feature_importances: FeatureImportance[] }>(
       '/explain/decision', { team_a: ta, team_b: tb, is_neutral: neutral, is_major_tournament: major, lang }
-    ).then(r => {
-      if (r) {
-        setFeatures(r.feature_importances)
-        setPrediction({ a: r.prediction.team_a_win_prob, d: r.prediction.draw_prob, b: r.prediction.team_b_win_prob })
+    ).then(({ data, error }) => {
+      if (error) { setError(error); return }
+      if (data) {
+        setFeatures(data.feature_importances)
+        setPrediction({ a: data.prediction.team_a_win_prob, d: data.prediction.draw_prob, b: data.prediction.team_b_win_prob })
       }
     })
   }
@@ -69,6 +71,7 @@ export default function ExplainTab({ apiAvailable, lang }: Props) {
     setLoading(true)
     setNarrative('')
     setMomentum([])
+    setError('')
     if (apiAvailable) {
       const [r, mom] = await Promise.allSettled([
         apiPost<{ explanation: string; feature_importances: FeatureImportance[]; prediction: { team_a_win_prob: number; draw_prob: number; team_b_win_prob: number } }>(
@@ -76,11 +79,12 @@ export default function ExplainTab({ apiAvailable, lang }: Props) {
         ),
         fetchMomentum(a, b, neutral, major),
       ])
-      if (r.status === 'fulfilled' && r.value) {
-        if (r.value.explanation) setNarrative(r.value.explanation)
-        if (r.value.feature_importances) setFeatures(r.value.feature_importances)
-        if (r.value.prediction) setPrediction({ a: r.value.prediction.team_a_win_prob, d: r.value.prediction.draw_prob, b: r.value.prediction.team_b_win_prob })
+      if (r.status === 'fulfilled' && r.value.data) {
+        if (r.value.data.explanation) setNarrative(r.value.data.explanation)
+        if (r.value.data.feature_importances) setFeatures(r.value.data.feature_importances)
+        if (r.value.data.prediction) setPrediction({ a: r.value.data.prediction.team_a_win_prob, d: r.value.data.prediction.draw_prob, b: r.value.data.prediction.team_b_win_prob })
       }
+      if (r.status === 'fulfilled' && r.value.error) setError(r.value.error)
       if (mom.status === 'fulfilled' && mom.value?.momentum) setMomentum(mom.value.momentum)
     }
     setLoading(false)
@@ -185,6 +189,8 @@ export default function ExplainTab({ apiAvailable, lang }: Props) {
           </div>
         </motion.div>
       )}
+
+      {error && <div className="error">{error}</div>}
 
       {narrative && (
         <motion.div className="granite-box" style={{ marginTop: '1rem' }}

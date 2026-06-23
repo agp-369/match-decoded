@@ -13,6 +13,7 @@ export default function MatchStoryTab({ apiAvailable, lang = 'en' }: Props) {
   const [story, setStory] = useState('')
   const [pred, setPred] = useState<Prediction | null>(null)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     const all = cachedTeams().map(x => x.name)
@@ -25,7 +26,7 @@ export default function MatchStoryTab({ apiAvailable, lang = 'en' }: Props) {
     if (!a || !b || a === b) return
     if (apiAvailable) {
       apiPost<Prediction>('/predict', { team_a: a, team_b: b, is_neutral: neutral, is_major_tournament: major })
-        .then(r => { if (r) setPred(r) })
+        .then(({ data }) => { if (data) setPred(data) })
     }
   }, [a, b])
 
@@ -33,13 +34,15 @@ export default function MatchStoryTab({ apiAvailable, lang = 'en' }: Props) {
     if (!a || !b || a === b) return
     setLoading(true)
     setStory('')
+    setError('')
     if (apiAvailable) {
       const [storyRes] = await Promise.allSettled([
         apiPost<{ story: string }>('/explain/story', {
           team_a: a, team_b: b, is_neutral: neutral, is_major_tournament: major, lang,
         }),
       ])
-      if (storyRes.status === 'fulfilled' && storyRes.value?.story) setStory(storyRes.value.story)
+      if (storyRes.status === 'fulfilled' && storyRes.value.data?.story) setStory(storyRes.value.data.story)
+      if (storyRes.status === 'fulfilled' && storyRes.value.error) setError(storyRes.value.error)
     }
     setLoading(false)
   }
@@ -118,6 +121,8 @@ export default function MatchStoryTab({ apiAvailable, lang = 'en' }: Props) {
       <button className="btn-primary" onClick={run} disabled={loading} style={{ marginTop: '0.5rem' }}>
         {loading ? <><span className="spinner" /> Writing story...</> : '📖 Tell the Match Story'}
       </button>
+
+      {error && <div className="error">{error}</div>}
 
       {story && (
         <motion.div className="granite-box" style={{ marginTop: '0.8rem', lineHeight: 1.8 }}

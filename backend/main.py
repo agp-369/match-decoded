@@ -6,11 +6,14 @@ Multilingual: EN, ES, FR, PT, DE
 import os
 import sys
 import tempfile
+import logging
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
 from contextlib import asynccontextmanager
+
+logger = logging.getLogger(__name__)
 
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
@@ -182,14 +185,22 @@ def predict_match(req: PredictRequest):
         raise HTTPException(status_code=503, detail=f"Model not loaded: {e}")
 
 
+def _ai_generate(fn, *args, **kwargs):
+    """Call an AI generation function with error handling."""
+    _ensure_ai()
+    try:
+        return fn(*args, **kwargs)
+    except Exception as e:
+        logger.error(f"AI generation failed: {e}")
+        raise HTTPException(status_code=503, detail=f"AI generation failed: {e}")
+
 @app.post("/explain/preview")
 def preview_match(req: ExplainRequest):
     try:
         result = predictor.predict(req.team_a, req.team_b, req.is_neutral, req.is_major_tournament)
     except (ValueError, RuntimeError) as e:
         raise HTTPException(status_code=400, detail=str(e))
-    _ensure_ai()
-    narrative = generate_preview(
+    narrative = _ai_generate(generate_preview,
         result["team_a"], result["team_b"],
         result["team_a_win_prob"], result["draw_prob"], result["team_b_win_prob"],
         result["stats_a"], result["stats_b"],
@@ -205,10 +216,9 @@ def explain_decision(req: ExplainRequest):
         result = predictor.predict(req.team_a, req.team_b, req.is_neutral, req.is_major_tournament)
     except (ValueError, RuntimeError) as e:
         raise HTTPException(status_code=400, detail=str(e))
-    _ensure_ai()
     importances = predictor.get_feature_importances()
     top_features = [f["name"] for f in importances[:3]]
-    explanation = generate_explain(
+    explanation = _ai_generate(generate_explain,
         result["team_a_win_prob"], result["draw_prob"], result["team_b_win_prob"],
         result["stats_a"], result["stats_b"],
         top_features, lang=req.lang,
@@ -286,8 +296,7 @@ def momentum_analysis(req: ExplainRequest):
         result = predictor.predict(req.team_a, req.team_b, req.is_neutral, req.is_major_tournament)
     except (ValueError, RuntimeError) as e:
         raise HTTPException(status_code=400, detail=str(e))
-    _ensure_ai()
-    analysis = generate_momentum(
+    analysis = _ai_generate(generate_momentum,
         result["team_a"], result["team_b"],
         result["team_a_win_prob"], result["team_b_win_prob"],
         lang=req.lang,
@@ -302,8 +311,7 @@ def tactical_analysis(req: ExplainRequest):
         result = predictor.predict(req.team_a, req.team_b, req.is_neutral, req.is_major_tournament)
     except (ValueError, RuntimeError) as e:
         raise HTTPException(status_code=400, detail=str(e))
-    _ensure_ai()
-    analysis = generate_tactical(
+    analysis = _ai_generate(generate_tactical,
         req.team_a, req.team_b,
         result["team_a_win_prob"], result["draw_prob"], result["team_b_win_prob"],
         result["stats_a"], result["stats_b"],
@@ -316,8 +324,7 @@ def tactical_analysis(req: ExplainRequest):
 @app.post("/explain/var")
 def var_explanation(req: VARRequest):
     """Addresses: WHY was a decision controversial or correct?"""
-    _ensure_ai()
-    explanation = generate_var_explanation(req.team_a, req.team_b, req.scenario, lang=req.lang)
+    explanation = _ai_generate(generate_var_explanation, req.team_a, req.team_b, req.scenario, lang=req.lang)
     return {"team_a": req.team_a, "team_b": req.team_b, "scenario": req.scenario, "explanation": explanation}
 
 
@@ -328,8 +335,7 @@ def match_story(req: ExplainRequest):
         result = predictor.predict(req.team_a, req.team_b, req.is_neutral, req.is_major_tournament)
     except (ValueError, RuntimeError) as e:
         raise HTTPException(status_code=400, detail=str(e))
-    _ensure_ai()
-    story = generate_story(
+    story = _ai_generate(generate_story,
         req.team_a, req.team_b,
         result["team_a_win_prob"], result["draw_prob"], result["team_b_win_prob"],
         result["stats_a"], result["stats_b"],
@@ -352,8 +358,7 @@ def legends_matchup(req: LegendsRequest):
         raise
     except Exception as e:
         raise HTTPException(status_code=503, detail=str(e))
-    _ensure_ai()
-    narrative = generate_legends(
+    narrative = _ai_generate(generate_legends,
         req.team_a, req.team_b, req.era_a, req.era_b,
         stats_a, stats_b, lang=req.lang,
     )
@@ -381,8 +386,7 @@ class TeachRequest(BaseModel):
 
 @app.post("/explain/teach")
 def teach_me(req: TeachRequest):
-    _ensure_ai()
-    explanation = generate_teach(req.question, lang=req.lang)
+    explanation = _ai_generate(generate_teach, req.question, lang=req.lang)
     return {"question": req.question, "explanation": explanation}
 
 

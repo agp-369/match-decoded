@@ -40,6 +40,7 @@ export default function WhatIfTab({ apiAvailable, lang }: Props) {
   const [major, setMajor] = useState(true)
   const [narrative, setNarrative] = useState('')
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const [showMomentum, setShowMomentum] = useState(false)
   const [basePred, setBasePred] = useState<Prediction | null>(null)
   const [momentum, setMomentum] = useState<MomentumPoint[]>([])
@@ -55,7 +56,7 @@ export default function WhatIfTab({ apiAvailable, lang }: Props) {
     if (!a || !b || a === b) return
     if (apiAvailable) {
       apiPost<Prediction>('/predict', { team_a: a, team_b: b, is_neutral: neutral, is_major_tournament: major })
-        .then(r => { if (r) { setBasePred(r); setFormA(r.stats_a.form); setFormB(r.stats_b.form) } })
+        .then(({ data }) => { if (data) { setBasePred(data); setFormA(data.stats_a.form); setFormB(data.stats_b.form) } })
     } else {
       setBasePred(null)
     }
@@ -78,6 +79,7 @@ export default function WhatIfTab({ apiAvailable, lang }: Props) {
     if (!a || !b || a === b || !p) return
     setLoading(true)
     setNarrative('')
+    setError('')
     if (apiAvailable) {
       const [narrRes, momRes] = await Promise.allSettled([
         apiPost<{ narrative: string }>('/explain/momentum', {
@@ -85,7 +87,8 @@ export default function WhatIfTab({ apiAvailable, lang }: Props) {
         }),
         fetchMomentum(a, b, neutral, major),
       ])
-      if (narrRes.status === 'fulfilled' && narrRes.value?.narrative) setNarrative(narrRes.value.narrative)
+      if (narrRes.status === 'fulfilled' && narrRes.value.data?.narrative) setNarrative(narrRes.value.data.narrative)
+      if (narrRes.status === 'fulfilled' && narrRes.value.error) setError(narrRes.value.error)
       if (momRes.status === 'fulfilled' && momRes.value?.momentum) setMomentum(momRes.value.momentum)
     }
     setLoading(false)
@@ -213,8 +216,10 @@ export default function WhatIfTab({ apiAvailable, lang }: Props) {
         </motion.div>
       )}
 
+      {error && <div className="error">{error}</div>}
+
       {narrative && (
-        <motion.div className="granite-box" style={{ marginTop: '1rem' }}
+        <motion.div className="granite-box" style={{ marginTop: '0.8rem' }}
           initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
           {narrative}
         </motion.div>

@@ -18,6 +18,7 @@ export default function TacticalAnalysisTab({ apiAvailable, lang = 'en' }: Props
   const [major, setMajor] = useState(true)
   const [analysis, setAnalysis] = useState('')
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     const all = cachedTeams().map(x => x.name)
@@ -30,11 +31,13 @@ export default function TacticalAnalysisTab({ apiAvailable, lang = 'en' }: Props
     if (!a || !b || a === b) return
     setLoading(true)
     setAnalysis('')
+    setError('')
     if (apiAvailable) {
-      const r = await apiPost<{ analysis: string }>('/explain/tactical', {
+      const { data, error } = await apiPost<{ analysis: string }>('/explain/tactical', {
         team_a: a, team_b: b, is_neutral: neutral, is_major_tournament: major, lang,
       })
-      if (r?.analysis) setAnalysis(r.analysis)
+      if (error) setError(error)
+      if (data?.analysis) setAnalysis(data.analysis)
     }
     setLoading(false)
   }
@@ -95,6 +98,8 @@ export default function TacticalAnalysisTab({ apiAvailable, lang = 'en' }: Props
       <button className="btn-primary" onClick={run} disabled={loading} style={{ marginTop: '0.5rem' }}>
         {loading ? <><span className="spinner" /> Analyzing tactics...</> : '🧠 Analyze Tactics with Granite'}
       </button>
+
+      {error && <div className="error">{error}</div>}
 
       {analysis && (
         <motion.div className="granite-box" style={{ marginTop: '0.8rem' }}

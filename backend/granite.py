@@ -19,8 +19,12 @@ from backend.langchain_prompts import (
 logger = logging.getLogger(__name__)
 
 GRANITE_MODEL_ID = "ibm/granite-3-8b-instruct"
-HF_MODEL_ID = "ibm-granite/granite-3-8b-instruct"
-HF_API_URL = f"https://api-inference.huggingface.co/models/{HF_MODEL_ID}"
+HF_MODEL_IDS = [
+    "ibm-granite/granite-4.1-8b-instruct",
+    "ibm-granite/granite-3.1-8b-instruct",
+    "ibm-granite/granite-3-8b-instruct",
+]
+HF_API_BASE = "https://api-inference.huggingface.co"
 
 WATSONX_API_KEY = os.environ.get("WATSONX_API_KEY", "")
 WATSONX_PROJECT_ID = os.environ.get("WATSONX_PROJECT_ID", "")
@@ -30,6 +34,8 @@ HF_TOKEN = os.environ.get("HF_TOKEN", "")
 WATSONX_AVAILABLE = bool(WATSONX_API_KEY and WATSONX_PROJECT_ID)
 HF_AVAILABLE = bool(HF_TOKEN)
 AI_AVAILABLE = WATSONX_AVAILABLE or HF_AVAILABLE
+
+_hf_working_model: str | None = None
 
 
 def _query_watsonx(prompt: str, max_tokens: int) -> str:
@@ -60,30 +66,61 @@ def _query_watsonx(prompt: str, max_tokens: int) -> str:
 
 
 def _query_huggingface(prompt: str, max_tokens: int) -> str:
-    """Query IBM Granite via HuggingFace Inference API (free tier fallback)."""
-    resp = requests.post(
-        HF_API_URL,
-        json={
-            "inputs": prompt,
-            "parameters": {
-                "max_new_tokens": max_tokens,
-                "temperature": 0.7,
-                "top_p": 0.9,
-                "repetition_penalty": 1.05,
-                "do_sample": True,
-            },
-        },
-        headers={"Authorization": f"Bearer {HF_TOKEN}"},
-        timeout=60,
-    )
-    if resp.status_code != 200:
-        raise RuntimeError(f"HuggingFace API error {resp.status_code}: {resp.text[:200]}")
-    result = resp.json()
-    if isinstance(result, list) and len(result) > 0:
-        text = result[0].get("generated_text", "")
-        if text.strip():
-            return text.strip()
-    raise RuntimeError("Empty response from HuggingFace API")
+    """Query IBM Granite via HuggingFace Inference API (free tier fallback).
+    Tries multiple model IDs; caches the first working one.
+    """
+    global _hf_working_model
+    import time
+
+    models_to_try = [_hf_working_model] if _hf_working_model else []
+    models_to_try += [m for m in HF_MODEL_IDS if m != _hf_working_model]
+    last_error = ""
+
+    for model_id in models_to_try:
+        for attempt in range(2):
+            try:
+                url = f"{HF_API_BASE}/models/{model_id}"
+                resp = requests.post(
+                    url,
+                    json={
+                        "inputs": prompt,
+                        "parameters": {
+                            "max_new_tokens": max_tokens,
+                            "temperature": 0.7,
+                            "top_p": 0.9,
+                            "repetition_penalty": 1.05,
+                            "do_sample": True,
+                            "return_full_text": False,
+                        },
+                    },
+                    headers={"Authorization": f"Bearer {HF_TOKEN}"},
+                    timeout=90,
+                )
+                if resp.status_code == 503 and "loading" in resp.text:
+                    if attempt < 1:
+                        time.sleep(15)
+                        continue
+                if resp.status_code == 401:
+                    last_error = f"Unauthorized for {model_id} (model may be gated)"
+                    break
+                if resp.status_code != 200:
+                    last_error = f"HuggingFace error {resp.status_code} for {model_id}: {resp.text[:200]}"
+                    break
+                result = resp.json()
+                if isinstance(result, list) and len(result) > 0:
+                    text = result[0].get("generated_text", "")
+                    if text.strip():
+                        _hf_working_model = model_id
+                        return text.strip()
+                last_error = f"Empty response from {model_id}"
+            except requests.exceptions.Timeout:
+                last_error = f"Timeout for {model_id}"
+                continue
+            except requests.exceptions.RequestException as e:
+                last_error = f"Request failed for {model_id}: {e}"
+                break
+
+    raise RuntimeError(f"HuggingFace API unavailable: {last_error}")
 
 
 def query_granite(prompt: str, max_tokens: int = 300) -> str:

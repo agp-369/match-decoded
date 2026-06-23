@@ -48,6 +48,7 @@ export default function PreMatchTab({ apiAvailable, wcMode, lang }: Props) {
   const [major, setMajor] = useState(true)
   const [narrative, setNarrative] = useState('')
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const [pred, setPred] = useState<Prediction | null>(null)
   const [momentum, setMomentum] = useState<MomentumPoint[]>([])
   const [showMomentum, setShowMomentum] = useState(false)
@@ -65,10 +66,10 @@ export default function PreMatchTab({ apiAvailable, wcMode, lang }: Props) {
 
   useEffect(() => {
     if (!a || !b || a === b) return
-    setPred(null); setNarrative(''); setMomentum([])
+    setPred(null); setNarrative(''); setMomentum([]); setError('')
     if (apiAvailable) {
       apiPost<Prediction>('/predict', { team_a: a, team_b: b, is_neutral: neutral, is_major_tournament: major })
-        .then(r => { if (r) setPred(r) })
+        .then(({ data }) => { if (data) setPred(data) })
     }
   }, [a, b])
 
@@ -81,6 +82,7 @@ export default function PreMatchTab({ apiAvailable, wcMode, lang }: Props) {
     setLoading(true)
     setNarrative('')
     setMomentum([])
+    setError('')
 
     if (apiAvailable) {
       const [predRes, narrRes, momRes] = await Promise.allSettled([
@@ -88,8 +90,9 @@ export default function PreMatchTab({ apiAvailable, wcMode, lang }: Props) {
         apiPost<{ narrative: string }>('/explain/preview', { team_a: a, team_b: b, is_neutral: neutral, is_major_tournament: major, lang }),
         fetchMomentum(a, b, neutral, major),
       ])
-      if (predRes.status === 'fulfilled' && predRes.value) setPred(predRes.value)
-      if (narrRes.status === 'fulfilled' && narrRes.value?.narrative) setNarrative(narrRes.value.narrative)
+      if (predRes.status === 'fulfilled' && predRes.value.data) setPred(predRes.value.data)
+      if (narrRes.status === 'fulfilled' && narrRes.value.data?.narrative) setNarrative(narrRes.value.data.narrative)
+      if (narrRes.status === 'fulfilled' && narrRes.value.error) setError(narrRes.value.error)
       if (momRes.status === 'fulfilled' && momRes.value?.momentum) setMomentum(momRes.value.momentum)
     }
     setLoading(false)
@@ -248,6 +251,8 @@ export default function PreMatchTab({ apiAvailable, wcMode, lang }: Props) {
               </div>
             </motion.div>
           )}
+
+          {error && <div className="error">{error}</div>}
 
           {narrative && (
             <motion.div className="granite-box" style={{ marginTop: '1rem' }}

@@ -126,14 +126,23 @@ export function teamFlagFromCode(code: string): string {
 
 export function fmtPct(v: number) { return `${(v * 100).toFixed(1)}%`; }
 
-export async function apiPost<T>(endpoint: string, body: unknown): Promise<T | null> {
+export interface ApiResult<T> { data?: T; error?: string }
+
+export async function apiPost<T>(endpoint: string, body: unknown): Promise<ApiResult<T>> {
   try {
     const r = await fetch(`${API}${endpoint}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
     });
-    if (!r.ok) return null;
-    return r.json();
-  } catch { return null; }
+    if (!r.ok) {
+      const text = await r.text().catch(() => '');
+      let detail = `Server error ${r.status}`;
+      try { const j = JSON.parse(text); detail = j.detail || detail; } catch {}
+      return { error: detail };
+    }
+    return { data: await r.json() };
+  } catch (e) {
+    return { error: `Network error: ${e instanceof Error ? e.message : e}` };
+  }
 }
 
 export async function fetchHealth(): Promise<{
@@ -149,7 +158,10 @@ export async function fetchHealth(): Promise<{
 
 export async function fetchMomentum(ta: string, tb: string, neutral: boolean, major: boolean):
   Promise<{ prediction: Prediction; momentum: MomentumPoint[] } | null> {
-  return apiPost('/simulate/momentum', { team_a: ta, team_b: tb, is_neutral: neutral, is_major_tournament: major });
+  const { data } = await apiPost<{ prediction: Prediction; momentum: MomentumPoint[] }>(
+    '/simulate/momentum', { team_a: ta, team_b: tb, is_neutral: neutral, is_major_tournament: major }
+  )
+  return data || null
 }
 
 export async function fetchWorldCupGroups(): Promise<Record<string, {

@@ -38,6 +38,7 @@ export default function LegendsTab({ apiAvailable, lang }: Props) {
   const [b, setB] = useState('Argentina')
   const [narrative, setNarrative] = useState('')
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const [statA, setStatA] = useState<TeamDetail | null>(null)
   const [statB, setStatB] = useState<TeamDetail | null>(null)
 
@@ -71,9 +72,11 @@ export default function LegendsTab({ apiAvailable, lang }: Props) {
     if (!a || !b) return
     setLoading(true)
     setNarrative('')
+    setError('')
     if (apiAvailable) {
-      const r = await apiPost<{ narrative: string }>('/explain/legends', { team_a: a, team_b: b, era_a: 'Modern era', era_b: 'Modern era', lang })
-      if (r?.narrative) setNarrative(r.narrative)
+      const { data, error } = await apiPost<{ narrative: string }>('/explain/legends', { team_a: a, team_b: b, era_a: 'Modern era', era_b: 'Modern era', lang })
+      if (error) setError(error)
+      if (data?.narrative) setNarrative(data.narrative)
     }
     setLoading(false)
   }
@@ -133,6 +136,8 @@ export default function LegendsTab({ apiAvailable, lang }: Props) {
       <button className="btn-primary" onClick={run} disabled={loading} style={{ marginTop: '0.5rem' }}>
         {loading ? <><span className="spinner" /> Generating...</> : '🏟️ Compare with Granite'}
       </button>
+
+      {error && <div className="error">{error}</div>}
 
       {narrative && (
         <motion.div className="granite-box" style={{ marginTop: '0.8rem' }}
