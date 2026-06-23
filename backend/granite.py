@@ -23,8 +23,9 @@ HF_MODEL_IDS = [
     "ibm-granite/granite-4.1-8b-instruct",
     "ibm-granite/granite-3.1-8b-instruct",
     "ibm-granite/granite-3-8b-instruct",
+    "meta-llama/Llama-3.1-8B-Instruct",
 ]
-HF_API_BASE = "https://api-inference.huggingface.co"
+HF_API_BASE = "https://router.huggingface.co/v1"
 
 WATSONX_API_KEY = os.environ.get("WATSONX_API_KEY", "")
 WATSONX_PROJECT_ID = os.environ.get("WATSONX_PROJECT_ID", "")
@@ -66,7 +67,7 @@ def _query_watsonx(prompt: str, max_tokens: int) -> str:
 
 
 def _query_huggingface(prompt: str, max_tokens: int) -> str:
-    """Query IBM Granite via HuggingFace Inference API (free tier fallback).
+    """Query via HuggingFace Inference Providers (OpenAI-compatible API).
     Tries multiple model IDs; caches the first working one.
     """
     global _hf_working_model
@@ -79,39 +80,37 @@ def _query_huggingface(prompt: str, max_tokens: int) -> str:
     for model_id in models_to_try:
         for attempt in range(2):
             try:
-                url = f"{HF_API_BASE}/models/{model_id}"
                 resp = requests.post(
-                    url,
+                    f"{HF_API_BASE}/chat/completions",
                     json={
-                        "inputs": prompt,
-                        "parameters": {
-                            "max_new_tokens": max_tokens,
-                            "temperature": 0.7,
-                            "top_p": 0.9,
-                            "repetition_penalty": 1.05,
-                            "do_sample": True,
-                            "return_full_text": False,
-                        },
+                        "model": model_id,
+                        "messages": [{"role": "user", "content": prompt}],
+                        "max_tokens": max_tokens,
+                        "temperature": 0.7,
+                        "top_p": 0.9,
+                        "repetition_penalty": 1.05,
                     },
-                    headers={"Authorization": f"Bearer {HF_TOKEN}"},
+                    headers={
+                        "Authorization": f"Bearer {HF_TOKEN}",
+                        "Content-Type": "application/json",
+                    },
                     timeout=90,
                 )
-                if resp.status_code == 503 and "loading" in resp.text:
+                if resp.status_code == 503:
                     if attempt < 1:
                         time.sleep(15)
                         continue
                 if resp.status_code == 401:
-                    last_error = f"Unauthorized for {model_id} (model may be gated)"
+                    last_error = f"Unauthorized for {model_id} (check HF_TOKEN)"
                     break
                 if resp.status_code != 200:
-                    last_error = f"HuggingFace error {resp.status_code} for {model_id}: {resp.text[:200]}"
+                    last_error = f"HF error {resp.status_code} for {model_id}: {resp.text[:200]}"
                     break
                 result = resp.json()
-                if isinstance(result, list) and len(result) > 0:
-                    text = result[0].get("generated_text", "")
-                    if text.strip():
-                        _hf_working_model = model_id
-                        return text.strip()
+                text = (result.get("choices") or [{}])[0].get("message", {}).get("content", "")
+                if text.strip():
+                    _hf_working_model = model_id
+                    return text.strip()
                 last_error = f"Empty response from {model_id}"
             except requests.exceptions.Timeout:
                 last_error = f"Timeout for {model_id}"
