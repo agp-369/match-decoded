@@ -26,9 +26,20 @@ Rules:
 - {li}"""
 
 def make_prompt(template: ChatPromptTemplate, lang: str = "en") -> ChatPromptTemplate:
+    def _role(m):
+        if isinstance(m, tuple):
+            return m[0]
+        return getattr(m, "role", "human") or "human"
+    def _content(m):
+        if isinstance(m, tuple):
+            return m[1]
+        p = getattr(m, "prompt", None)
+        if p is not None:
+            return p.template
+        return str(m)
     return ChatPromptTemplate.from_messages([
         ("system", _sys_str(lang)),
-        *[(m[0] if isinstance(m, tuple) else "human", m[1] if isinstance(m, tuple) else m.content) for m in template.messages[1:]],
+        *[(_role(m), _content(m)) for m in template.messages[1:]],
     ])
 
 PREVIEW_TEMPLATE = ChatPromptTemplate.from_messages([
