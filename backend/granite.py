@@ -9,6 +9,8 @@ import logging
 import requests
 from typing import Optional
 
+from langchain_core.messages import SystemMessage, HumanMessage
+
 from backend.langchain_prompts import (
     PREVIEW_TEMPLATE, EXPLAIN_TEMPLATE, MOMENTUM_TEMPLATE, TACTICAL_TEMPLATE,
     VAR_TEMPLATE, STORY_TEMPLATE, DOCLING_ANALYSIS_TEMPLATE, LEGENDS_TEMPLATE,
@@ -67,11 +69,19 @@ def _query_watsonx(prompt: str, max_tokens: int) -> str:
 
 
 def _query_huggingface(prompt: str, max_tokens: int) -> str:
-    """Query via HuggingFace Inference Providers (OpenAI-compatible API).
-    Tries multiple model IDs; caches the first working one.
-    """
+    """Legacy wrapper — sends prompt as single user message."""
+    return _hf_chat("", prompt, max_tokens)
+
+
+def _hf_chat(system: str, human: str, max_tokens: int) -> str:
+    """Query HuggingFace Inference Providers chat completions API."""
     global _hf_working_model
     import time
+
+    messages = []
+    if system:
+        messages.append({"role": "system", "content": system})
+    messages.append({"role": "user", "content": human})
 
     models_to_try = [_hf_working_model] if _hf_working_model else []
     models_to_try += [m for m in HF_MODEL_IDS if m != _hf_working_model]
@@ -84,7 +94,7 @@ def _query_huggingface(prompt: str, max_tokens: int) -> str:
                     f"{HF_API_BASE}/chat/completions",
                     json={
                         "model": model_id,
-                        "messages": [{"role": "user", "content": prompt}],
+                        "messages": messages,
                         "max_tokens": max_tokens,
                         "temperature": 0.7,
                         "top_p": 0.9,
@@ -94,11 +104,11 @@ def _query_huggingface(prompt: str, max_tokens: int) -> str:
                         "Authorization": f"Bearer {HF_TOKEN}",
                         "Content-Type": "application/json",
                     },
-                    timeout=90,
+                    timeout=120,
                 )
                 if resp.status_code == 503:
                     if attempt < 1:
-                        time.sleep(15)
+                        time.sleep(20)
                         continue
                 if resp.status_code == 401:
                     last_error = f"Unauthorized for {model_id} (check HF_TOKEN)"
@@ -123,10 +133,19 @@ def _query_huggingface(prompt: str, max_tokens: int) -> str:
 
 
 def query_granite(prompt: str, max_tokens: int = 300) -> str:
-    """Query IBM Granite — watsonx.ai primary, HuggingFace fallback."""
+    """Query IBM Granite — legacy flat-text entry point."""
+    return query_granite_chat("", prompt, max_tokens)
+
+
+def query_granite_chat(system: str, human: str, max_tokens: int = 300) -> str:
+    """Query IBM Granite via chat API — watsonx.ai primary, HuggingFace fallback."""
+    if not human.strip():
+        raise ValueError("Empty prompt")
     errors = []
+
     if WATSONX_AVAILABLE:
         try:
+            prompt = f"{system}\n\n{human}" if system else human
             result = _query_watsonx(prompt, max_tokens)
             logger.info("Granite response via watsonx.ai")
             return result
@@ -136,8 +155,8 @@ def query_granite(prompt: str, max_tokens: int = 300) -> str:
 
     if HF_AVAILABLE:
         try:
-            result = _query_huggingface(prompt, max_tokens)
-            logger.info("Granite response via HuggingFace Inference API")
+            result = _hf_chat(system, human, max_tokens)
+            logger.info("Granite response via HuggingFace Inference Providers")
             return result
         except Exception as e:
             logger.error(f"HuggingFace also failed: {e}")
@@ -158,7 +177,14 @@ def _render(prompt_template, lang: str = "en", **kwargs) -> str:
     """Render a prompt template with language support and query Granite."""
     tpl = make_prompt(prompt_template, lang) if lang != "en" else prompt_template
     msg = tpl.format_prompt(**kwargs)
-    return query_granite(msg.to_string())
+    system = ""
+    human = ""
+    for m in msg.messages:
+        if isinstance(m, SystemMessage):
+            system = m.content
+        elif isinstance(m, HumanMessage):
+            human = m.content
+    return query_granite_chat(system, human)
 
 
 def generate_preview(team_a: str, team_b: str, prob_a: float, prob_draw: float, prob_b: float,
