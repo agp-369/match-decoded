@@ -1,4 +1,4 @@
-export const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+export const API = 'https://match-decoded-api.onrender.com';
 
 export interface TeamStats { winrate: number; goal_avg: number; form: number; matches: number; }
 

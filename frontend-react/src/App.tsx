@@ -49,7 +49,7 @@ export default function App() {
     fetchWorldCupGroups()
     const ctrl = new AbortController()
     const t = setTimeout(() => ctrl.abort(), 60000)
-    fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/health`, { signal: ctrl.signal })
+    fetch(`https://match-decoded-api.onrender.com/health`, { signal: ctrl.signal })
       .then(async r => {
         clearTimeout(t)
         if (r.ok) {
