@@ -37,7 +37,7 @@ bob "write a project README for the IBM AI Builders Challenge"
 
 ## Why IBM Bob?
 
-IBM Bob accelerated development by handling boilerplate code, suggesting best practices, and debugging issues in real time — allowing the team to focus on the core AI/ML logic and user experience rather than infrastructure plumbing.
+IBM Bob accelerated development by handling boilerplate code, suggesting best practices, and debugging issues in real time — allowing me to focus on the core AI/ML logic and user experience rather than infrastructure plumbing.
 
 ---
 
