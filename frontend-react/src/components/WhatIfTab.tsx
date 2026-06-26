@@ -82,12 +82,12 @@ export default function WhatIfTab({ apiAvailable, lang }: Props) {
     setError('')
     if (apiAvailable) {
       const [narrRes, momRes] = await Promise.allSettled([
-        apiPost<{ narrative: string }>('/explain/momentum', {
-          team_a: a, team_b: b, prob_a: p.team_a_win_prob, prob_b: p.team_b_win_prob, lang,
+        apiPost<{ analysis: string }>('/explain/momentum', {
+          team_a: a, team_b: b, is_neutral: neutral, is_major_tournament: major, lang,
         }),
         fetchMomentum(a, b, neutral, major),
       ])
-      if (narrRes.status === 'fulfilled' && narrRes.value.data?.narrative) setNarrative(narrRes.value.data.narrative)
+      if (narrRes.status === 'fulfilled' && narrRes.value.data?.analysis) setNarrative(narrRes.value.data.analysis)
       if (narrRes.status === 'fulfilled' && narrRes.value.error) setError(narrRes.value.error)
       if (momRes.status === 'fulfilled' && momRes.value?.momentum) setMomentum(momRes.value.momentum)
     }
