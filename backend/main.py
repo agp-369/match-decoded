@@ -120,6 +120,8 @@ def health():
             "LangChain (prompt templates)",
             "IBM Docling (PDF parsing)",
             "IBM Bob (code assistant)",
+            "Context Forge MCP (team stats & predictions)",
+            "LangFlow (visual AI workflows)",
         ],
     }
 
@@ -660,6 +662,41 @@ def langflow_info():
         "cli_commands": {
             "validate": "lfx validate backend/langflow_flows/teach_me_granite.json",
             "serve": "lfx serve backend/langflow_flows/teach_me_granite.json",
+        },
+    }
+
+
+# ── Context Forge MCP Integration ─────────────────────────────────────
+
+MCP_SERVER_PATH = Path(__file__).parent / "mcp_serve.py"
+
+
+@app.get("/mcp/info")
+def mcp_info():
+    """Information about the Context Forge MCP server."""
+    mcp_tools = [
+        {"name": "list_teams", "description": "List all 224 international teams"},
+        {"name": "get_team_stats", "description": "Get detailed stats for a team (winrate, goal avg, form, matches)"},
+        {"name": "compare_teams", "description": "Compare two teams with predicted outcome"},
+        {"name": "feature_importances", "description": "Model feature importances"},
+        {"name": "data_summary", "description": "Dataset summary statistics"},
+    ]
+    return {
+        "integrated": True,
+        "name": "Context Forge MCP — Match Decoded",
+        "description": "Football team stats, match predictions, and head-to-head data exposed via Model Context Protocol",
+        "protocol": "MCP (Model Context Protocol)",
+        "transport": "stdio",
+        "server_path": "backend/mcp_serve.py",
+        "tools": mcp_tools,
+        "cli_commands": {
+            "inspect": "fastmcp inspect backend/mcp_serve.py",
+            "run": "python backend/mcp_serve.py",
+        },
+        "data": {
+            "teams": 224,
+            "dataset": "31,161 real international matches (1990-2026)",
+            "model_accuracy": "66.6% (XGBoost ensemble, 3-class)",
         },
     }
 

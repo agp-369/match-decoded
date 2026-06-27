@@ -125,6 +125,43 @@ export default function LangFlowTab() {
           LangFlow UI or served via <code>lfx</code> (LangFlow Executor).
         </div>
       </div>
+
+      <div className="glass-card gold-border" style={{ marginTop: '1rem' }}>
+        <div className="section-heading"><span className="accent">●</span> Context Forge MCP Server</div>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '0.75rem', lineHeight: 1.6 }}>
+          Match Decoded exposes team stats and predictions via the <strong>Model Context Protocol (MCP)</strong> — letting AI agents query live football data through a standardized interface.
+        </p>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+          {['🎯 224 teams', '📊 31,161 matches', '⚡ 5 tools', '🔌 stdio transport'].map(tag => (
+            <span key={tag} style={{
+              fontSize: '0.65rem', padding: '0.2rem 0.5rem', borderRadius: 4,
+              background: 'rgba(34,197,94,0.1)', color: 'var(--green)',
+              border: '1px solid rgba(34,197,94,0.2)',
+            }}>{tag}</span>
+          ))}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+          <div className="glass-card" style={{ padding: '0.75rem' }}>
+            <strong style={{ fontSize: '0.75rem', color: 'var(--green)' }}>list_teams</strong>
+            <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)' }}>All 224 team names</div>
+          </div>
+          <div className="glass-card" style={{ padding: '0.75rem' }}>
+            <strong style={{ fontSize: '0.75rem', color: 'var(--green)' }}>get_team_stats</strong>
+            <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)' }}>Winrate, goal avg, form</div>
+          </div>
+          <div className="glass-card" style={{ padding: '0.75rem' }}>
+            <strong style={{ fontSize: '0.75rem', color: 'var(--green)' }}>compare_teams</strong>
+            <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)' }}>Head-to-head prediction</div>
+          </div>
+          <div className="glass-card" style={{ padding: '0.75rem' }}>
+            <strong style={{ fontSize: '0.75rem', color: 'var(--green)' }}>feature_importances</strong>
+            <div style={{ fontSize: '0.65rem', color: 'var(--text-dim)' }}>Model decision factors</div>
+          </div>
+        </div>
+        <div style={{ marginTop: '0.75rem', fontSize: '0.7rem', color: 'var(--text-dim)', lineHeight: 1.6 }}>
+          Run: <code>python backend/mcp_serve.py</code> or connect via <code>fastmcp inspect backend/mcp_serve.py</code>
+        </div>
+      </div>
     </motion.div>
   )
 }

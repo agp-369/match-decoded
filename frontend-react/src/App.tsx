@@ -108,6 +108,7 @@ export default function App() {
               <span className="tech-badge">✦ IBM Docling</span>
               <span className="tech-badge">✦ IBM Bob</span>
               <span className="tech-badge">✦ LangFlow</span>
+              <span className="tech-badge">✦ Context Forge MCP</span>
             </div>
             <div className="hero-stats">
               <motion.div className="hero-stat" whileHover={{ scale: 1.05 }}>
@@ -149,6 +150,8 @@ export default function App() {
               <span className="ibm-tech">IBM Bob</span>
               <span className="ibm-tech-sep">·</span>
               <span className="ibm-tech">LangFlow</span>
+              <span className="ibm-tech-sep">·</span>
+              <span className="ibm-tech">Context Forge MCP</span>
             </div>
           </div>
 
