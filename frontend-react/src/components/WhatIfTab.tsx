@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
-import { cachedTeams, teamFlag, apiPost, fetchMomentum, fmtPct, generateMomentum, type Prediction, type MomentumPoint } from '../api'
+import { cachedTeams, teamFlag, apiPost, fetchMomentum, fmtPct, generateMomentum, API, type Prediction, type MomentumPoint } from '../api'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 interface Props { apiAvailable: boolean; lang?: string }
@@ -44,6 +44,9 @@ export default function WhatIfTab({ apiAvailable, lang }: Props) {
   const [showMomentum, setShowMomentum] = useState(false)
   const [basePred, setBasePred] = useState<Prediction | null>(null)
   const [momentum, setMomentum] = useState<MomentumPoint[]>([])
+  const [streaming, setStreaming] = useState(false)
+  const abortRef = useRef<AbortController | null>(null)
+  const outputRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const all = cachedTeams().map(x => x.name)
@@ -62,6 +65,10 @@ export default function WhatIfTab({ apiAvailable, lang }: Props) {
     }
   }, [a, b])
 
+  useEffect(() => {
+    if (outputRef.current) outputRef.current.scrollTop = outputRef.current.scrollHeight
+  }, [narrative])
+
   const teamFormA = basePred?.stats_a?.form ?? 0.5
   const teamFormB = basePred?.stats_b?.form ?? 0.5
 
@@ -75,9 +82,75 @@ export default function WhatIfTab({ apiAvailable, lang }: Props) {
     return { team_a_win_prob: adjA / total, draw_prob: adjD / total, team_b_win_prob: adjB / total }
   })()
 
-  const run = async () => {
+  const runStream = async () => {
     if (!a || !b || a === b || !p) return
     setLoading(true)
+    setStreaming(true)
+    setNarrative('')
+    setError('')
+
+    const ctrl = new AbortController()
+    abortRef.current = ctrl
+
+    try {
+      const r = await fetch(`${API}/explain/stream/momentum`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ team_a: a, team_b: b, is_neutral: neutral, is_major_tournament: major, lang }),
+        signal: ctrl.signal,
+      })
+      if (!r.ok) {
+        const text = await r.text().catch(() => '')
+        setError(`Server error: ${r.status}${text ? ` — ${text.slice(0, 100)}` : ''}`)
+        return
+      }
+
+      const reader = r.body?.getReader()
+      if (!reader) { setError('No response body'); return }
+
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      while (true) {
+        const { value, done } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+
+        const lines = buffer.split('\n\n')
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue
+          const payload = line.slice(6).trim()
+          if (payload === '[DONE]') continue
+
+          try {
+            const data = JSON.parse(payload)
+            if (data.error) { setError(data.error); continue }
+            if (data.token) setNarrative(prev => prev + data.token)
+          } catch { continue }
+        }
+      }
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name !== 'AbortError') {
+        setError(`Connection error: ${err.message}`)
+      }
+    } finally {
+      setLoading(false)
+      setStreaming(false)
+      abortRef.current = null
+    }
+
+    if (apiAvailable) {
+      const momRes = await fetchMomentum(a, b, neutral, major)
+      if (momRes?.momentum) setMomentum(momRes.momentum)
+    }
+  }
+
+  const runLegacy = async () => {
+    if (!a || !b || a === b || !p) return
+    setLoading(true)
+    setStreaming(false)
     setNarrative('')
     setError('')
     if (apiAvailable) {
@@ -92,6 +165,26 @@ export default function WhatIfTab({ apiAvailable, lang }: Props) {
       if (momRes.status === 'fulfilled' && momRes.value?.momentum) setMomentum(momRes.value.momentum)
     }
     setLoading(false)
+  }
+
+  const run = async () => {
+    if (apiAvailable) {
+      try {
+        const r = await fetch(`${API}/explain/stream/momentum`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ team_a: a, team_b: b, is_neutral: neutral, is_major_tournament: major, lang }),
+        })
+        if (r.ok) { r.body?.cancel(); await runStream(); return }
+      } catch {}
+    }
+    await runLegacy()
+  }
+
+  const cancel = () => {
+    abortRef.current?.abort()
+    setLoading(false)
+    setStreaming(false)
   }
 
   const isClientMomentum = momentum.length === 0 && p !== null
@@ -181,8 +274,15 @@ export default function WhatIfTab({ apiAvailable, lang }: Props) {
 
       <div style={{ display: 'flex', gap: '0.5rem' }}>
         <button className="btn-primary" onClick={run} disabled={loading} style={{ flex: 1 }}>
-          {loading ? <><span className="spinner" /> Simulating...</> : '🔄 Analyze What-If'}
+          {loading && streaming ? <><span className="spinner" /> Streaming analysis...</> :
+           loading ? <><span className="spinner" /> Simulating...</> :
+           '🔄 Analyze What-If'}
         </button>
+        {loading && (
+          <button className="btn-secondary" onClick={cancel}>
+            ⏹ Cancel
+          </button>
+        )}
         <button className="btn-secondary" onClick={() => setShowMomentum(!showMomentum)}>
           {showMomentum ? 'Hide Timeline' : '📈 Timeline'}
         </button>
@@ -219,9 +319,9 @@ export default function WhatIfTab({ apiAvailable, lang }: Props) {
       {error && <div className="error">{error}</div>}
 
       {narrative && (
-        <motion.div className="granite-box" style={{ marginTop: '0.8rem' }}
-          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-          {narrative}
+        <motion.div className="granite-box" style={{ marginTop: '0.8rem', maxHeight: 500, overflowY: 'auto' }}
+          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} ref={outputRef}>
+          {narrative}{streaming && <span className="cursor-blink">|</span>}
         </motion.div>
       )}
     </motion.div>

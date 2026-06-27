@@ -11,8 +11,9 @@ import VARExplainedTab from './components/VARExplainedTab'
 import MatchStoryTab from './components/MatchStoryTab'
 import TeachMeTab from './components/TeachMeTab'
 import LiveMatchTab from './components/LiveMatchTab'
+import LangFlowTab from './components/LangFlowTab'
 
-type Tab = 'prematch' | 'whatif' | 'legends' | 'explain' | 'docling' | 'tactical' | 'var' | 'story' | 'teach' | 'livematch'
+type Tab = 'prematch' | 'whatif' | 'legends' | 'explain' | 'docling' | 'tactical' | 'var' | 'story' | 'teach' | 'livematch' | 'langflow'
 const TABS: { key: Tab; label: string; icon: string; desc: string }[] = [
   { key: 'livematch', label: 'Live Match', icon: '⚽', desc: '90-min simulation + AI commentary' },
   { key: 'prematch', label: 'Pre-Match Preview', icon: '📊', desc: 'Prediction + Narrative' },
@@ -24,6 +25,7 @@ const TABS: { key: Tab; label: string; icon: string; desc: string }[] = [
   { key: 'explain', label: 'Decision Trace', icon: '🔍', desc: 'Model transparency' },
   { key: 'teach', label: 'Teach Me', icon: '📚', desc: 'Learn the game' },
   { key: 'docling', label: 'Docling Analysis', icon: '📄', desc: 'Report parsing' },
+  { key: 'langflow', label: 'LangFlow', icon: '🔀', desc: 'Visual workflow' },
 ]
 
 const LANG_OPTIONS = [
@@ -105,6 +107,7 @@ export default function App() {
               <span className="tech-badge">✦ LangChain</span>
               <span className="tech-badge">✦ IBM Docling</span>
               <span className="tech-badge">✦ IBM Bob</span>
+              <span className="tech-badge">✦ LangFlow</span>
             </div>
             <div className="hero-stats">
               <motion.div className="hero-stat" whileHover={{ scale: 1.05 }}>
@@ -144,6 +147,8 @@ export default function App() {
               <span className="ibm-tech">Docling</span>
               <span className="ibm-tech-sep">·</span>
               <span className="ibm-tech">IBM Bob</span>
+              <span className="ibm-tech-sep">·</span>
+              <span className="ibm-tech">LangFlow</span>
             </div>
           </div>
 
@@ -194,6 +199,7 @@ export default function App() {
           {tab === 'explain' && <ExplainTab apiAvailable={isOnline} lang={lang} />}
           {tab === 'teach' && <TeachMeTab apiAvailable={isOnline} lang={lang} />}
           {tab === 'docling' && <DoclingTab />}
+          {tab === 'langflow' && <LangFlowTab />}
 
           <footer className="footer">
             Match Decoded <span className="dot">·</span> IBM AI Builders Challenge

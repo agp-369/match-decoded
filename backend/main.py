@@ -614,6 +614,56 @@ async def docling_analyze(file: UploadFile = File(...)):
             os.unlink(tmp.name)
 
 
+# ── LangFlow Integration ──────────────────────────────────────────────
+
+LANGLOW_FLOW_PATH = Path(__file__).parent / "langflow_flows" / "teach_me_granite.json"
+
+
+@app.get("/langflow/flow")
+def get_langflow_flow():
+    """Return the LangFlow Teach Me Q&A flow definition (IBM Granite)."""
+    if not LANGLOW_FLOW_PATH.exists():
+        raise HTTPException(status_code=404, detail="LangFlow flow not found")
+    flow_data = json.loads(LANGLOW_FLOW_PATH.read_text(encoding="utf-8"))
+    return {
+        "flow": flow_data,
+        "meta": {
+            "type": "langflow",
+            "name": "Teach Me Q&A with IBM Granite",
+            "description": flow_data.get("description", ""),
+            "nodes": len(flow_data["data"]["nodes"]),
+            "edges": len(flow_data["data"]["edges"]),
+            "how_to_run": "lfx serve backend/langflow_flows/teach_me_granite.json",
+            "requires_env": "HUGGINGFACEHUB_API_TOKEN",
+            "documentation": "https://github.com/abhishek/match-decoded#langflow-integration",
+        },
+    }
+
+
+@app.get("/langflow/info")
+def langflow_info():
+    """Information about the LangFlow integration."""
+    return {
+        "integrated": True,
+        "flows": [
+            {
+                "id": "teach_me_granite",
+                "name": "Teach Me Q&A with IBM Granite",
+                "description": "Q&A flow using IBM Granite 3.1 8B Instruct via HuggingFace Inference API",
+                "path": "backend/langflow_flows/teach_me_granite.json",
+                "endpoint": "/langflow/flow",
+                "nodes": 3,
+                "components": ["ChatInput", "IBM Granite 3.1 (HuggingFace)", "ChatOutput"],
+                "runtime": "lfx serve",
+            }
+        ],
+        "cli_commands": {
+            "validate": "lfx validate backend/langflow_flows/teach_me_granite.json",
+            "serve": "lfx serve backend/langflow_flows/teach_me_granite.json",
+        },
+    }
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

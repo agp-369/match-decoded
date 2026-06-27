@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { motion } from 'framer-motion'
-import { apiPost } from '../api'
+import { apiPost, API } from '../api'
 
 const FAQ_QUESTIONS = [
   { q: 'How does offside work in football?', icon: '🚩' },
@@ -23,10 +23,74 @@ export default function TeachMeTab({ apiAvailable, lang = 'en' }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [customQ, setCustomQ] = useState('')
+  const [streaming, setStreaming] = useState(false)
+  const abortRef = useRef<AbortController | null>(null)
+  const outputRef = useRef<HTMLDivElement>(null)
 
-  const run = async (q: string) => {
+  const runStream = async (q: string) => {
     setQuestion(q)
     setLoading(true)
+    setStreaming(true)
+    setAnswer('')
+    setError('')
+
+    const ctrl = new AbortController()
+    abortRef.current = ctrl
+
+    try {
+      const r = await fetch(`${API}/explain/stream/teach`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: q, lang }),
+        signal: ctrl.signal,
+      })
+      if (!r.ok) {
+        const text = await r.text().catch(() => '')
+        setError(`Server error: ${r.status}${text ? ` — ${text.slice(0, 100)}` : ''}`)
+        return
+      }
+
+      const reader = r.body?.getReader()
+      if (!reader) { setError('No response body'); return }
+
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      while (true) {
+        const { value, done } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+
+        const lines = buffer.split('\n\n')
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue
+          const payload = line.slice(6).trim()
+          if (payload === '[DONE]') continue
+
+          try {
+            const data = JSON.parse(payload)
+            if (data.error) { setError(data.error); continue }
+            if (data.token) setAnswer(prev => prev + data.token)
+          } catch { continue }
+        }
+      }
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name !== 'AbortError') {
+        setError(`Connection error: ${err.message}`)
+      }
+    } finally {
+      setLoading(false)
+      setStreaming(false)
+      abortRef.current = null
+    }
+  }
+
+  const runLegacy = async (q: string) => {
+    setQuestion(q)
+    setLoading(true)
+    setStreaming(false)
     setAnswer('')
     setError('')
     if (apiAvailable) {
@@ -35,6 +99,26 @@ export default function TeachMeTab({ apiAvailable, lang = 'en' }: Props) {
       if (data?.explanation) setAnswer(data.explanation)
     }
     setLoading(false)
+  }
+
+  const run = async (q: string) => {
+    if (apiAvailable) {
+      try {
+        const r = await fetch(`${API}/explain/stream/teach`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question: q, lang }),
+        })
+        if (r.ok) { r.body?.cancel(); await runStream(q); return }
+      } catch {}
+    }
+    await runLegacy(q)
+  }
+
+  const cancel = () => {
+    abortRef.current?.abort()
+    setLoading(false)
+    setStreaming(false)
   }
 
   return (
@@ -69,16 +153,23 @@ export default function TeachMeTab({ apiAvailable, lang = 'en' }: Props) {
         </div>
       </div>
 
-      <div style={{ textAlign: 'center', color: 'var(--text-dim)', fontSize: '0.75rem', marginTop: '-0.3rem', marginBottom: '0.5rem' }}>
-        {loading ? 'Granite is thinking...' : (error ? 'AI unavailable' : (answer ? 'Answer from IBM Granite' : 'Select a question above'))}
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center', marginTop: '0.5rem' }}>
+        <div style={{ textAlign: 'center', color: 'var(--text-dim)', fontSize: '0.75rem' }}>
+          {loading && streaming ? 'Granite is streaming...' : loading ? 'Granite is thinking...' : (error ? 'AI unavailable' : (answer ? 'Answer from IBM Granite' : 'Select a question above'))}
+        </div>
+        {loading && (
+          <button className="btn-secondary" style={{ padding: '0.3rem 0.8rem', fontSize: '0.75rem' }} onClick={cancel}>
+            ⏹ Cancel
+          </button>
+        )}
       </div>
 
       {error && <div className="error">{error}</div>}
 
       {answer && (
-        <motion.div className="granite-box" style={{ marginTop: '0.5rem' }}
-          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-          {answer}
+        <motion.div className="granite-box" style={{ marginTop: '0.5rem', maxHeight: 500, overflowY: 'auto' }}
+          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} ref={outputRef}>
+          {answer}{streaming && <span className="cursor-blink">|</span>}
         </motion.div>
       )}
     </motion.div>

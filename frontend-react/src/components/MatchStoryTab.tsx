@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
-import { cachedTeams, teamFlag, apiPost, fmtPct, type Prediction } from '../api'
+import { cachedTeams, teamFlag, apiPost, fmtPct, API, type Prediction } from '../api'
 
 interface Props { apiAvailable: boolean; lang?: string }
 
@@ -14,6 +14,9 @@ export default function MatchStoryTab({ apiAvailable, lang = 'en' }: Props) {
   const [pred, setPred] = useState<Prediction | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [streaming, setStreaming] = useState(false)
+  const abortRef = useRef<AbortController | null>(null)
+  const outputRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const all = cachedTeams().map(x => x.name)
@@ -30,9 +33,74 @@ export default function MatchStoryTab({ apiAvailable, lang = 'en' }: Props) {
     }
   }, [a, b])
 
-  const run = async () => {
+  useEffect(() => {
+    if (outputRef.current) outputRef.current.scrollTop = outputRef.current.scrollHeight
+  }, [story])
+
+  const runStream = async () => {
     if (!a || !b || a === b) return
     setLoading(true)
+    setStreaming(true)
+    setStory('')
+    setError('')
+
+    const ctrl = new AbortController()
+    abortRef.current = ctrl
+
+    try {
+      const r = await fetch(`${API}/explain/stream/story`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ team_a: a, team_b: b, is_neutral: neutral, is_major_tournament: major, lang }),
+        signal: ctrl.signal,
+      })
+      if (!r.ok) {
+        const text = await r.text().catch(() => '')
+        setError(`Server error: ${r.status}${text ? ` — ${text.slice(0, 100)}` : ''}`)
+        return
+      }
+
+      const reader = r.body?.getReader()
+      if (!reader) { setError('No response body'); return }
+
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      while (true) {
+        const { value, done } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+
+        const lines = buffer.split('\n\n')
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue
+          const payload = line.slice(6).trim()
+          if (payload === '[DONE]') continue
+
+          try {
+            const data = JSON.parse(payload)
+            if (data.error) { setError(data.error); continue }
+            if (data.token) setStory(prev => prev + data.token)
+          } catch { continue }
+        }
+      }
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name !== 'AbortError') {
+        setError(`Connection error: ${err.message}`)
+      }
+    } finally {
+      setLoading(false)
+      setStreaming(false)
+      abortRef.current = null
+    }
+  }
+
+  const runLegacy = async () => {
+    if (!a || !b || a === b) return
+    setLoading(true)
+    setStreaming(false)
     setStory('')
     setError('')
     if (apiAvailable) {
@@ -45,6 +113,26 @@ export default function MatchStoryTab({ apiAvailable, lang = 'en' }: Props) {
       if (storyRes.status === 'fulfilled' && storyRes.value.error) setError(storyRes.value.error)
     }
     setLoading(false)
+  }
+
+  const run = async () => {
+    if (apiAvailable) {
+      try {
+        const r = await fetch(`${API}/explain/stream/story`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ team_a: a, team_b: b, is_neutral: neutral, is_major_tournament: major, lang }),
+        })
+        if (r.ok) { r.body?.cancel(); await runStream(); return }
+      } catch {}
+    }
+    await runLegacy()
+  }
+
+  const cancel = () => {
+    abortRef.current?.abort()
+    setLoading(false)
+    setStreaming(false)
   }
 
   const p = pred
@@ -118,16 +206,25 @@ export default function MatchStoryTab({ apiAvailable, lang = 'en' }: Props) {
         </div>
       )}
 
-      <button className="btn-primary" onClick={run} disabled={loading} style={{ marginTop: '0.5rem' }}>
-        {loading ? <><span className="spinner" /> Writing story...</> : '📖 Tell the Match Story'}
-      </button>
+      <div style={{ display: 'flex', gap: 8, marginTop: '0.5rem' }}>
+        <button className="btn-primary" onClick={run} disabled={loading}>
+          {loading && streaming ? <><span className="spinner" /> Streaming story...</> :
+           loading ? <><span className="spinner" /> Writing story...</> :
+           '📖 Tell the Match Story'}
+        </button>
+        {loading && (
+          <button className="btn-secondary" onClick={cancel}>
+            ⏹ Cancel
+          </button>
+        )}
+      </div>
 
       {error && <div className="error">{error}</div>}
 
       {story && (
-        <motion.div className="granite-box" style={{ marginTop: '0.8rem', lineHeight: 1.8 }}
-          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-          {story}
+        <motion.div className="granite-box" style={{ marginTop: '0.8rem', maxHeight: 500, overflowY: 'auto', lineHeight: 1.8 }}
+          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} ref={outputRef}>
+          {story}{streaming && <span className="cursor-blink">|</span>}
         </motion.div>
       )}
     </motion.div>
