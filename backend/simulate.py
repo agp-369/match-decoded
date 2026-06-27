@@ -60,9 +60,9 @@ def _generate_event_description(event_type: str, team_a: str, team_b: str, minut
     }
     return descs.get(event_type, f"Match event at {minute}'.")
 
-def _granite_commentary(event_type: str, team_a: str, team_b: str, minute: int,
-                         score_a: int, score_b: int, stats_a: dict, stats_b: dict) -> str:
-    """Call Granite for AI commentary on a match event."""
+async def _granite_commentary(event_type: str, team_a: str, team_b: str, minute: int,
+                               score_a: int, score_b: int, stats_a: dict, stats_b: dict) -> str:
+    """Call Granite for AI commentary on a match event (non-blocking via to_thread)."""
     label = EVENT_TYPES.get(event_type, "Match Event")
     desc = _generate_event_description(event_type, team_a, team_b, minute, score_a, score_b)
 
@@ -84,7 +84,7 @@ def _granite_commentary(event_type: str, team_a: str, team_b: str, minute: int,
     )
 
     try:
-        return query_granite_chat(system, user, max_tokens=120)
+        return await asyncio.to_thread(query_granite_chat, system, user, 120)
     except Exception as e:
         logger.warning(f"Granite commentary failed: {e}")
         return "An intriguing moment in this match — one that could shift the balance."
@@ -207,14 +207,14 @@ async def simulate_match_stream(
             momentum_a = max(0.05, min(0.95, momentum_a))
             momentum_b = max(0.05, min(0.95, momentum_b))
 
-        # Generate Granite commentary for key events
+        # Generate Granite commentary for key events (non-blocking)
         needs_commentary = event_type in ("GOAL", "GOAL_AGAINST", "RED_CARD", "VAR_REVIEW",
                                            "PENALTY", "GOAL_DISALLOWED", "HALF_TIME", "FULL_TIME",
                                            "MOMENTUM_SHIFT", "TACTICAL_SHIFT", "VAR_OVERTURN")
         commentary = ""
         if needs_commentary and AI_AVAILABLE:
             try:
-                commentary = _granite_commentary(
+                commentary = await _granite_commentary(
                     event_type, team_a, team_b, minute, score_a, score_b, stats_a, stats_b
                 )
             except Exception:

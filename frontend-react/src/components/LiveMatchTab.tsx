@@ -18,6 +18,20 @@ const EVENT_ICONS: Record<string, string> = {
   GOAL_DISALLOWED: '🚫', WOODWORK: '💥', FULL_TIME: '🏁', KICK_OFF: '⚡',
 }
 
+function eventClass(ev: MatchEvent): string {
+  if (ev.type === 'GOAL' || ev.type === 'GOAL_AGAINST') return 'goal'
+  if (ev.type === 'RED_CARD') return 'red-card'
+  if (ev.type === 'HALF_TIME' || ev.type === 'FULL_TIME') return 'period'
+  if (ev.type === 'VAR_REVIEW' || ev.type === 'VAR_OVERTURN') return 'var'
+  return 'default'
+}
+
+function clockClass(running: boolean, finished: boolean): string {
+  if (running) return 'running'
+  if (finished) return 'finished'
+  return 'idle'
+}
+
 export default function LiveMatchTab({ apiAvailable }: Props) {
   const [teams, setTeams] = useState<string[]>(['Brazil', 'Argentina', 'England', 'France', 'Germany'])
   const [a, setA] = useState('Brazil')
@@ -147,18 +161,16 @@ export default function LiveMatchTab({ apiAvailable }: Props) {
           Simulate a full 90-minute World Cup match in ~90 seconds with AI commentary on every key event.
         </p>
 
-        <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: 160 }}>
+        <div className="live-match-controls">
+          <div className="live-match-select-group">
             <label className="input-label">Home Team</label>
-            <select className="team-select-input" value={a} onChange={e => setA(e.target.value)}
-              disabled={running} style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #334155', background: '#1e293b', color: '#e2e8f0', fontSize: 14 }}>
+            <select className="live-match-select team-select-input" value={a} onChange={e => setA(e.target.value)} disabled={running}>
               {teams.filter(t => t !== b).map(t => <option key={t} value={t}>{teamFlag(t)} {t}</option>)}
             </select>
           </div>
-          <div style={{ flex: 1, minWidth: 160 }}>
+          <div className="live-match-select-group">
             <label className="input-label">Away Team</label>
-            <select className="team-select-input" value={b} onChange={e => setB(e.target.value)}
-              disabled={running} style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: '1px solid #334155', background: '#1e293b', color: '#e2e8f0', fontSize: 14 }}>
+            <select className="live-match-select team-select-input" value={b} onChange={e => setB(e.target.value)} disabled={running}>
               {teams.filter(t => t !== a).map(t => <option key={t} value={t}>{teamFlag(t)} {t}</option>)}
             </select>
           </div>
@@ -183,100 +195,59 @@ export default function LiveMatchTab({ apiAvailable }: Props) {
 
         {error && <div className="error-box">{error}</div>}
 
-        {/* Scoreboard and Clock */}
         {(running || finished || events.length > 0) && (
           <>
-            <div style={{ textAlign: 'center', marginBottom: 16, position: 'relative' }}>
-              <div style={{ fontSize: 64, fontWeight: 700, letterSpacing: 4, color: '#fbbf24', marginBottom: 4 }}>
-                {scoreA} — {scoreB}
-              </div>
-              <div style={{ fontSize: 24, fontWeight: 600, color: '#94a3b8', marginBottom: 8 }}>
-                {teamFlag(a)} {a} vs {teamFlag(b)} {b}
-              </div>
-              <div style={{
-                display: 'inline-block', padding: '4px 20px', borderRadius: 20,
-                background: running ? '#f59e0b33' : finished ? '#22c55e33' : '#334155',
-                color: running ? '#fbbf24' : finished ? '#22c55e' : '#94a3b8',
-                fontSize: 20, fontWeight: 700,
-              }}>
+            <div className="live-match-scoreboard">
+              <div className="live-match-score">{scoreA} — {scoreB}</div>
+              <div className="live-match-team-names">{teamFlag(a)} {a} vs {teamFlag(b)} {b}</div>
+              <div className={`live-match-clock ${clockClass(running, finished)}`}>
                 {running ? `▸ ${minuteStr}` : finished ? '✅ Full Time' : minuteStr}
               </div>
             </div>
 
-            {/* Momentum Bar */}
-            <div style={{ marginBottom: 16 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#64748b', marginBottom: 4 }}>
+            <div className="live-match-momentum">
+              <div className="live-match-momentum-labels">
                 <span>{teamFlag(a)} {a}</span>
                 <span>Momentum</span>
                 <span>{teamFlag(b)} {b}</span>
               </div>
-              <div style={{ height: 20, background: '#1e293b', borderRadius: 10, overflow: 'hidden', display: 'flex' }}>
-                <div style={{
-                  width: `${momentumPctA}%`, background: 'linear-gradient(90deg, #2563eb, #3b82f6)',
-                  transition: 'width 0.5s ease', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 10, fontWeight: 600, color: 'white', minWidth: momentumPctA > 15 ? 0 : undefined,
-                }}>
+              <div className="live-match-momentum-bar">
+                <div className="live-match-momentum-side team-a" style={{ width: `${momentumPctA}%` }}>
                   {momentumPctA > 15 ? `${momentumPctA}%` : ''}
                 </div>
-                <div style={{
-                  width: `${momentumPctB}%`, background: 'linear-gradient(90deg, #dc2626, #ef4444)',
-                  transition: 'width 0.5s ease', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 10, fontWeight: 600, color: 'white', minWidth: momentumPctB > 15 ? 0 : undefined,
-                }}>
+                <div className="live-match-momentum-side team-b" style={{ width: `${momentumPctB}%` }}>
                   {momentumPctB > 15 ? `${momentumPctB}%` : ''}
                 </div>
               </div>
             </div>
 
-            {/* Event Feed */}
-            <div ref={feedRef} style={{
-              maxHeight: 400, overflowY: 'auto', background: '#0f172a', borderRadius: 8,
-              padding: 12, border: '1px solid #1e293b',
-            }}>
+            <div ref={feedRef} className="live-match-feed">
               {events.length === 0 && (
-                <div style={{ textAlign: 'center', color: '#64748b', padding: 40 }}>
+                <div className="live-match-empty">
                   Match events will appear here as the simulation runs...
                 </div>
               )}
               {events.map((ev, i) => (
-                <div key={i} style={{
-                  padding: '10px 12px', marginBottom: 6, borderRadius: 6,
-                  background: ev.type === 'GOAL' || ev.type === 'GOAL_AGAINST' ? '#f59e0b15' :
-                    ev.type === 'RED_CARD' ? '#dc262615' :
-                    ev.type === 'HALF_TIME' || ev.type === 'FULL_TIME' ? '#3b82f615' : '#1e293b',
-                  borderLeft: `3px solid ${
-                    ev.type === 'GOAL' || ev.type === 'GOAL_AGAINST' ? '#f59e0b' :
-                    ev.type === 'RED_CARD' ? '#dc2626' :
-                    ev.type === 'HALF_TIME' || ev.type === 'FULL_TIME' ? '#3b82f6' :
-                    ev.type === 'VAR_REVIEW' || ev.type === 'VAR_OVERTURN' ? '#a855f7' : '#334155'
-                  }`,
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                    <span style={{ fontSize: 18 }}>{EVENT_ICONS[ev.type] || '•'}</span>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: '#fbbf24' }}>{ev.minute}'</span>
-                    <span style={{ fontSize: 13, fontWeight: 600 }}>{ev.label}</span>
+                <div key={i} className={`live-match-event ${eventClass(ev)}`}>
+                  <div className="live-match-event-header">
+                    <span className="live-match-event-icon">{EVENT_ICONS[ev.type] || '•'}</span>
+                    <span className="live-match-event-minute">{ev.minute}'</span>
+                    <span className="live-match-event-label">{ev.label}</span>
                     {(ev.type === 'GOAL' || ev.type === 'GOAL_AGAINST') && (
-                      <span style={{ fontSize: 13, color: '#fbbf24', fontWeight: 700 }}>
-                        {ev.score_a} — {ev.score_b}
-                      </span>
+                      <span className="live-match-event-score">{ev.score_a} — {ev.score_b}</span>
                     )}
                   </div>
                   {ev.commentary && (
-                    <div style={{ fontSize: 13, color: '#c0c0c0', lineHeight: 1.5, fontStyle: 'italic', paddingLeft: 26 }}>
-                      “{ev.commentary}”
-                    </div>
+                    <div className="live-match-commentary">“{ev.commentary}”</div>
                   )}
                 </div>
               ))}
             </div>
 
-            {/* Match Summary */}
             {finished && events.length > 0 && (
-              <div style={{ textAlign: 'center', marginTop: 16, padding: 16, background: '#0f172a', borderRadius: 8, border: '1px solid #22c55e33' }}>
-                <div style={{ fontSize: 18, fontWeight: 700, color: '#22c55e', marginBottom: 4 }}>
-                  Match Complete
-                </div>
-                <div style={{ fontSize: 14, color: '#94a8b3' }}>
+              <div className="live-match-summary">
+                <div className="live-match-summary-title">Match Complete</div>
+                <div className="live-match-summary-score">
                   {teamFlag(a)} {a} {scoreA} — {scoreB} {teamFlag(b)} {b}
                   {scoreA > scoreB ? ` — ${a} wins!` : scoreB > scoreA ? ` — ${b} wins!` : ' — Draw'}
                 </div>
@@ -286,9 +257,9 @@ export default function LiveMatchTab({ apiAvailable }: Props) {
         )}
 
         {!running && events.length === 0 && !error && (
-          <div style={{ textAlign: 'center', padding: '40px 20px', color: '#64748b' }}>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>⚽</div>
-            <div style={{ fontSize: 14, lineHeight: 1.6 }}>
+          <div className="live-match-placeholder">
+            <div className="live-match-placeholder-icon">⚽</div>
+            <div className="live-match-placeholder-text">
               Select two teams and click <strong>Start Simulation</strong> to watch a live AI-commentated match unfold.
               <br />Each minute of match time ≈ 1 second. Full match in ~90 seconds.
             </div>

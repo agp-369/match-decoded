@@ -30,6 +30,8 @@ class MatchPredictor:
         self.model = None
         self.team_stats = None
         self.feature_cols = None
+        self.elo_ratings = None
+        self.h2h_matrix = None
         self._loaded = False
 
     def load(self):
@@ -46,11 +48,26 @@ class MatchPredictor:
             data = joblib.load(data_path)
             self.team_stats = data["team_stats"]
             self.feature_cols = data["feature_cols"]
+            self.elo_ratings = data.get("elo_ratings", {})
+            self.h2h_matrix = data.get("h2h_matrix", {})
             self._loaded = True
             return True
         except Exception as e:
             print(f"Model load error: {e}")
             return False
+
+    def _get_h2h(self, team_a: str, team_b: str) -> tuple[float, float]:
+        """Look up H2H win rates for this pair from the precomputed matrix."""
+        key = tuple(sorted([team_a, team_b]))
+        lookup_key = f"{key[0]}||{key[1]}"
+        rec = self.h2h_matrix.get(lookup_key)
+        if not rec or rec['n'] == 0:
+            return 0.5, 0.5
+        is_a_home = (key[0] == team_a)
+        if is_a_home:
+            return rec['hw'] / rec['n'], rec['aw'] / rec['n']
+        else:
+            return rec['aw'] / rec['n'], rec['hw'] / rec['n']
 
     def predict(self, team_a: str, team_b: str, is_neutral: bool = True,
                 is_major_tournament: bool = True) -> dict:
@@ -70,12 +87,16 @@ class MatchPredictor:
         is_major = int(is_major_tournament)
         is_friendly = int(not is_major)
 
-        # Build feature row matching training features
+        home_elo = self.elo_ratings.get(team_a, a.get('elo', 1500.0))
+        away_elo = self.elo_ratings.get(team_b, b.get('elo', 1500.0))
+        elo_diff = home_elo - away_elo
+        h2h_hw, h2h_aw = self._get_h2h(team_a, team_b)
+
         row_dict = {
-            'home_elo': 1500.0, 'away_elo': 1500.0, 'elo_diff': 0.0,
+            'home_elo': home_elo, 'away_elo': away_elo, 'elo_diff': elo_diff,
             'home_recent_form': a['recent_form'], 'away_recent_form': b['recent_form'],
             'home_goal_avg_rolling': a['goal_avg'], 'away_goal_avg_rolling': b['goal_avg'],
-            'h2h_hw': 0.5, 'h2h_aw': 0.5,
+            'h2h_hw': h2h_hw, 'h2h_aw': h2h_aw,
             'is_neutral': int(is_neutral),
             'is_major': is_major,
             'is_friendly': is_friendly,
@@ -93,6 +114,11 @@ class MatchPredictor:
             "team_b_win_prob": round(float(proba[2]), 4),
             "is_neutral": is_neutral,
             "is_major_tournament": is_major_tournament,
+            "elo_a": round(home_elo, 1),
+            "elo_b": round(away_elo, 1),
+            "elo_diff": round(elo_diff, 1),
+            "h2h_hw": round(h2h_hw, 4),
+            "h2h_aw": round(h2h_aw, 4),
             "stats_a": {
                 "winrate": round(a["winrate"], 4),
                 "goal_avg": round(a["goal_avg"], 4),

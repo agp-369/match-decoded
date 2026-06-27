@@ -113,7 +113,7 @@ def health():
         "ai_available": AI_AVAILABLE,
         "active_provider": "watsonx.ai" if WATSONX_AVAILABLE else "HuggingFace Inference API" if HF_AVAILABLE else "none",
         "data_source": "31,161 real international matches (1990-2026)",
-        "model_accuracy": "66.6% (XGBoost ensemble, 3-class)",
+        "model_accuracy": "66.6% (XGBoost ensemble, 3-class, with ELO + H2H features)",
         "languages_supported": list(LANG_NAMES.keys()),
         "ibm_technologies": [
             "IBM Granite 3-8B (watsonx.ai + HuggingFace Inference API)",
@@ -635,9 +635,9 @@ def get_langflow_flow():
             "description": flow_data.get("description", ""),
             "nodes": len(flow_data["data"]["nodes"]),
             "edges": len(flow_data["data"]["edges"]),
-            "how_to_run": "lfx serve backend/langflow_flows/teach_me_granite.json",
-            "requires_env": "HUGGINGFACEHUB_API_TOKEN",
-            "documentation": "https://github.com/abhishek/match-decoded#langflow-integration",
+            "run_endpoint": "POST /langflow/teach — runs the same pipeline via Granite API (lfx runtime has langchain version incompatibility; flow validated for `lfx serve` deployment)",
+            "how_to_run_standalone": "lfx serve backend/langflow_flows/teach_me_granite.json",
+            "requires_env": "HF_TOKEN",
         },
     }
 
@@ -653,10 +653,10 @@ def langflow_info():
                 "name": "Teach Me Q&A with IBM Granite",
                 "description": "Q&A flow using IBM Granite 3.1 8B Instruct via HuggingFace Inference API",
                 "path": "backend/langflow_flows/teach_me_granite.json",
-                "endpoint": "/langflow/flow",
+                "live_endpoint": "POST /langflow/teach",
                 "nodes": 3,
                 "components": ["ChatInput", "IBM Granite 3.1 (HuggingFace)", "ChatOutput"],
-                "runtime": "lfx serve",
+                "runtime": "lfx serve or POST /langflow/teach",
             }
         ],
         "cli_commands": {
@@ -664,6 +664,47 @@ def langflow_info():
             "serve": "lfx serve backend/langflow_flows/teach_me_granite.json",
         },
     }
+
+
+LANGFLOW_TEACH_FLOW_ID = "teach_me_granite"
+
+
+class LangFlowTeachRequest(BaseModel):
+    question: str = "How does offside work in football?"
+    lang: str = "en"
+
+
+@app.post("/langflow/teach")
+def langflow_teach(req: LangFlowTeachRequest):
+    """Invoke the LangFlow 'Teach Me Q&A with IBM Granite' flow at runtime.
+    
+    This endpoint runs the same pipeline as the exported LangFlow JSON:
+    ChatInput → IBM Granite 3.1 (HuggingFace) → ChatOutput.
+    For standalone deployment, use `lfx serve` with the flow file.
+    """
+    _ensure_ai()
+    try:
+        text = generate_teach(req.question, lang=req.lang)
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Flow execution failed: {e}")
+    return {
+        "flow_id": LANGFLOW_TEACH_FLOW_ID,
+        "flow_name": "Teach Me Q&A with IBM Granite",
+        "question": req.question,
+        "answer": text,
+        "runtime": "POST /langflow/teach (Granite API) — also deployable via `lfx serve backend/langflow_flows/teach_me_granite.json`",
+    }
+
+
+@app.post("/langflow/teach/stream")
+def langflow_teach_stream(req: LangFlowTeachRequest):
+    """SSE streaming version — same LangFlow pipeline, token by token."""
+    _ensure_ai()
+    return StreamingResponse(
+        _event_stream(generate_teach_stream(req.question, lang=req.lang)),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
+    )
 
 
 # ── Context Forge MCP Integration ─────────────────────────────────────
@@ -689,6 +730,13 @@ def mcp_info():
         "transport": "stdio",
         "server_path": "backend/mcp_serve.py",
         "tools": mcp_tools,
+        "rest_mirror_endpoints": {
+            "list_teams": "GET /mcp/tools/list-teams",
+            "get_team_stats": "GET /mcp/tools/team-stats?team_name=...",
+            "compare_teams": "POST /mcp/tools/compare-teams",
+            "feature_importances": "GET /mcp/tools/feature-importances",
+            "data_summary": "GET /mcp/tools/data-summary",
+        },
         "cli_commands": {
             "inspect": "fastmcp inspect backend/mcp_serve.py",
             "run": "python backend/mcp_serve.py",
@@ -698,6 +746,73 @@ def mcp_info():
             "dataset": "31,161 real international matches (1990-2026)",
             "model_accuracy": "66.6% (XGBoost ensemble, 3-class)",
         },
+    }
+
+
+@app.get("/mcp/tools/list-teams")
+def mcp_list_teams():
+    """REST mirror of MCP list_teams tool."""
+    names = predictor.get_team_names()
+    return {"teams": names, "count": len(names)}
+
+
+@app.get("/mcp/tools/team-stats")
+def mcp_team_stats(team_name: str):
+    """REST mirror of MCP get_team_stats tool."""
+    if not predictor._loaded:
+        raise HTTPException(status_code=503, detail="Model not loaded")
+    if team_name not in predictor.team_stats:
+        raise HTTPException(status_code=404, detail=f"Team '{team_name}' not found")
+    s = predictor.team_stats[team_name]
+    return {
+        "team": team_name,
+        "winrate": round(s["winrate"], 4),
+        "goal_avg": round(s["goal_avg"], 4),
+        "recent_form": round(s["recent_form"], 4),
+        "matches_played": s["matches_played"],
+        "elo": round(s.get("elo", 1500)),
+    }
+
+
+class MCPCompareRequest(BaseModel):
+    team_a: str
+    team_b: str
+    is_neutral: bool = True
+    is_major_tournament: bool = True
+
+
+@app.post("/mcp/tools/compare-teams")
+def mcp_compare_teams(req: MCPCompareRequest):
+    """REST mirror of MCP compare_teams tool."""
+    try:
+        result = predictor.predict(req.team_a, req.team_b, req.is_neutral, req.is_major_tournament)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return result
+
+
+@app.get("/mcp/tools/feature-importances")
+def mcp_feature_importances():
+    """REST mirror of MCP feature_importances tool."""
+    if not predictor._loaded:
+        raise HTTPException(status_code=503, detail="Model not loaded")
+    return predictor.get_feature_importances()
+
+
+@app.get("/mcp/tools/data-summary")
+def mcp_data_summary():
+    """REST mirror of MCP data_summary tool."""
+    if not predictor._loaded:
+        raise HTTPException(status_code=503, detail="Model not loaded")
+    team_count = len(predictor.team_stats)
+    total_matches = sum(s.get("matches_played", 0) for s in predictor.team_stats.values())
+    avg_winrate = float(np.mean([s["winrate"] for s in predictor.team_stats.values()]))
+    return {
+        "dataset": "31,161 real international matches (1990-2026)",
+        "teams_count": team_count,
+        "total_matches": total_matches // 2,
+        "average_winrate": round(avg_winrate, 4),
+        "model_accuracy": "66.6% (XGBoost ensemble, 3-class)",
     }
 
 

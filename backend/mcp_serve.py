@@ -40,6 +40,32 @@ def _load_data():
 MODEL, TEAM_STATS, FEATURE_COLS = _load_data()
 TEAM_NAMES = sorted(TEAM_STATS.keys()) if TEAM_STATS else []
 
+def _load_elo_h2h():
+    """Load ELO ratings and H2H matrix from team_data.pkl."""
+    data_path = MODELS_DIR / "team_data.pkl"
+    if not data_path.exists():
+        return {}, {}
+    try:
+        data = joblib.load(data_path)
+        return data.get("elo_ratings", {}), data.get("h2h_matrix", {})
+    except Exception:
+        return {}, {}
+
+ELO_RATINGS, H2H_MATRIX = _load_elo_h2h()
+
+def _get_h2h(team_a: str, team_b: str) -> tuple[float, float]:
+    """Look up H2H win rates from precomputed matrix."""
+    key = tuple(sorted([team_a, team_b]))
+    lookup_key = f"{key[0]}||{key[1]}"
+    rec = H2H_MATRIX.get(lookup_key)
+    if not rec or rec['n'] == 0:
+        return 0.5, 0.5
+    is_a_home = (key[0] == team_a)
+    if is_a_home:
+        return rec['hw'] / rec['n'], rec['aw'] / rec['n']
+    else:
+        return rec['aw'] / rec['n'], rec['hw'] / rec['n']
+
 
 @mcp.tool(
     name="list_teams",
@@ -65,12 +91,14 @@ def get_team_stats(team_name: str) -> str:
         hint = f" Did you mean: {', '.join(similar)}?" if similar else ""
         return f"Team '{team_name}' not found.{hint}"
     s = TEAM_STATS[team_name]
+    elo_val = ELO_RATINGS.get(team_name, s.get('elo', 1500))
     return json.dumps({
         "team": team_name,
         "winrate": round(s["winrate"], 4),
         "goal_avg": round(s["goal_avg"], 4),
         "recent_form": round(s["recent_form"], 4),
         "matches_played": s["matches_played"],
+        "elo": round(elo_val, 1),
     }, indent=2)
 
 
@@ -93,11 +121,15 @@ def compare_teams(team_a: str, team_b: str, is_neutral: bool = True, is_major_to
     is_major = int(is_major_tournament)
     is_friendly = int(not is_major)
 
+    home_elo = ELO_RATINGS.get(team_a, a.get('elo', 1500.0))
+    away_elo = ELO_RATINGS.get(team_b, b.get('elo', 1500.0))
+    h2h_hw, h2h_aw = _get_h2h(team_a, team_b)
+
     row_dict = {
-        "home_elo": 1500.0, "away_elo": 1500.0, "elo_diff": 0.0,
+        "home_elo": home_elo, "away_elo": away_elo, "elo_diff": home_elo - away_elo,
         "home_recent_form": a["recent_form"], "away_recent_form": b["recent_form"],
         "home_goal_avg_rolling": a["goal_avg"], "away_goal_avg_rolling": b["goal_avg"],
-        "h2h_hw": 0.5, "h2h_aw": 0.5,
+        "h2h_hw": h2h_hw, "h2h_aw": h2h_aw,
         "is_neutral": int(is_neutral),
         "is_major": is_major,
         "is_friendly": is_friendly,
@@ -108,15 +140,16 @@ def compare_teams(team_a: str, team_b: str, is_neutral: bool = True, is_major_to
     return json.dumps({
         "team_a": {"name": team_a, "winrate": round(a["winrate"], 4),
                    "goal_avg": round(a["goal_avg"], 4), "form": round(a["recent_form"], 4),
-                   "matches": a["matches_played"]},
+                   "matches": a["matches_played"], "elo": round(home_elo, 1)},
         "team_b": {"name": team_b, "winrate": round(b["winrate"], 4),
                    "goal_avg": round(b["goal_avg"], 4), "form": round(b["recent_form"], 4),
-                   "matches": b["matches_played"]},
+                   "matches": b["matches_played"], "elo": round(away_elo, 1)},
         "prediction": {
             f"{team_a}_win_prob": round(float(proba[0]), 4),
             "draw_prob": round(float(proba[1]), 4),
             f"{team_b}_win_prob": round(float(proba[2]), 4),
         },
+        "h2h": {"home_win_rate": round(h2h_hw, 4), "away_win_rate": round(h2h_aw, 4)},
         "context": {
             "is_neutral": is_neutral,
             "is_major_tournament": is_major_tournament,
@@ -173,9 +206,11 @@ def data_summary() -> str:
         "dataset": "31,161 real international matches (1990-2026)",
         "teams_count": team_count,
         "total_team_matches": total_matches,
+        "unique_matches": total_matches // 2,
         "average_winrate": round(float(avg_winrate), 4),
         "model_accuracy": "66.6% (XGBoost ensemble, 3-class)",
         "provider": "Context Forge MCP — Match Decoded",
+        "note": "total_team_matches double-counts each match (once per team); unique_matches is the true count",
     }, indent=2)
 
 

@@ -68,6 +68,33 @@ def _query_watsonx(prompt: str, max_tokens: int) -> str:
     raise RuntimeError("Empty response from watsonx.ai")
 
 
+def _query_watsonx_stream(prompt: str, max_tokens: int):
+    """Stream tokens from watsonx.ai using generate_text_stream (true token streaming)."""
+    from ibm_watsonx_ai.foundation_models import ModelInference
+    from ibm_watsonx_ai.metanames import GenTextParamsMetaNames as Params
+
+    params = {
+        Params.DECODING_METHOD: "sample",
+        Params.TEMPERATURE: 0.7,
+        Params.TOP_P: 0.9,
+        Params.MAX_NEW_TOKENS: max_tokens,
+        Params.MIN_NEW_TOKENS: 30,
+        Params.REPETITION_PENALTY: 1.05,
+    }
+
+    model = ModelInference(
+        model_id=GRANITE_MODEL_ID,
+        params=params,
+        credentials={"apikey": WATSONX_API_KEY, "url": WATSONX_URL},
+        project_id=WATSONX_PROJECT_ID,
+    )
+
+    stream = model.generate_text_stream(prompt=prompt)
+    for chunk in stream:
+        if chunk and chunk.strip():
+            yield chunk.strip()
+
+
 def _query_huggingface(prompt: str, max_tokens: int) -> str:
     """Legacy wrapper — sends prompt as single user message."""
     return _hf_chat("", prompt, max_tokens)
@@ -210,7 +237,7 @@ def _hf_chat_stream(system: str, human: str, max_tokens: int = 500):
 
 
 def query_granite_chat_stream(system: str, human: str, max_tokens: int = 500):
-    """Sync generator: stream tokens from Granite (watsonx.ai or HuggingFace)."""
+    """Sync generator: stream tokens from Granite (HF or watsonx.ai, both true token streaming)."""
     if not human.strip():
         raise ValueError("Empty prompt")
 
@@ -224,9 +251,7 @@ def query_granite_chat_stream(system: str, human: str, max_tokens: int = 500):
     if WATSONX_AVAILABLE:
         try:
             prompt = f"{system}\n\n{human}" if system else human
-            result = _query_watsonx(prompt, max_tokens)
-            for token in result:
-                yield token
+            yield from _query_watsonx_stream(prompt, max_tokens)
             return
         except Exception as e:
             logger.error(f"watsonx.ai streaming also failed: {e}")
