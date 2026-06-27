@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
-import { cachedTeams, teamFlag, apiPost, fetchMomentum, fmtPct, generateMomentum, type FeatureImportance, type MomentumPoint } from '../api'
+import { cachedTeams, teamFlag, apiPost, fetchMomentum, fmtPct, generateMomentum, API, type FeatureImportance, type MomentumPoint } from '../api'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 interface Props { apiAvailable: boolean; lang?: string }
@@ -51,6 +51,14 @@ export default function ExplainTab({ apiAvailable, lang }: Props) {
     if (all.length > 0 && !all.includes(b)) setB(all[1] !== all[0] ? all[1] : all[Math.min(2, all.length - 1)])
   }, [])
 
+  const [streaming, setStreaming] = useState(false)
+  const abortRef = useRef<AbortController | null>(null)
+  const narrativeRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (narrativeRef.current) narrativeRef.current.scrollTop = narrativeRef.current.scrollHeight
+  }, [narrative])
+
   const fetchFeatures = (ta: string, tb: string) => {
     if (!apiAvailable || !ta || !tb || ta === tb) return
     apiPost<{ prediction: { team_a_win_prob: number; draw_prob: number; team_b_win_prob: number }; feature_importances: FeatureImportance[] }>(
@@ -66,26 +74,71 @@ export default function ExplainTab({ apiAvailable, lang }: Props) {
 
   useEffect(() => { fetchFeatures(a, b) }, [a, b])
 
+  const runStreamExplanation = async (body: Record<string, unknown>): Promise<boolean> => {
+    const ctrl = new AbortController()
+    abortRef.current = ctrl
+    try {
+      const r = await fetch(`${API}/explain/stream/decision`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body), signal: ctrl.signal,
+      })
+      if (!r.ok) { r.body?.cancel(); return false }
+
+      const reader = r.body?.getReader()
+      if (!reader) return false
+
+      const decoder = new TextDecoder()
+      let buffer = ''
+      setNarrative('')
+      setStreaming(true)
+
+      while (true) {
+        const { value, done } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n\n')
+        buffer = lines.pop() || ''
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue
+          const payload = line.slice(6).trim()
+          if (payload === '[DONE]') continue
+          try {
+            const data = JSON.parse(payload)
+            if (data.error) { setError(data.error); continue }
+            if (data.token) setNarrative(prev => prev + data.token)
+          } catch { continue }
+        }
+      }
+      return true
+    } catch {
+      return false
+    } finally {
+      setStreaming(false)
+      abortRef.current = null
+    }
+  }
+
   const run = async () => {
     if (!a || !b || a === b) return
     setLoading(true)
     setNarrative('')
     setMomentum([])
     setError('')
+
+    const body = { team_a: a, team_b: b, is_neutral: neutral, is_major_tournament: major, lang }
+
     if (apiAvailable) {
-      const [r, mom] = await Promise.allSettled([
-        apiPost<{ explanation: string; feature_importances: FeatureImportance[]; prediction: { team_a_win_prob: number; draw_prob: number; team_b_win_prob: number } }>(
-          '/explain/decision', { team_a: a, team_b: b, is_neutral: neutral, is_major_tournament: major, lang }
-        ),
+      const [mom] = await Promise.allSettled([
         fetchMomentum(a, b, neutral, major),
       ])
-      if (r.status === 'fulfilled' && r.value.data) {
-        if (r.value.data.explanation) setNarrative(r.value.data.explanation)
-        if (r.value.data.feature_importances) setFeatures(r.value.data.feature_importances)
-        if (r.value.data.prediction) setPrediction({ a: r.value.data.prediction.team_a_win_prob, d: r.value.data.prediction.draw_prob, b: r.value.data.prediction.team_b_win_prob })
-      }
-      if (r.status === 'fulfilled' && r.value.error) setError(r.value.error)
       if (mom.status === 'fulfilled' && mom.value?.momentum) setMomentum(mom.value.momentum)
+
+      const streamed = await runStreamExplanation(body)
+      if (!streamed) {
+        const { data, error } = await apiPost<{ explanation: string }>('/explain/decision', body)
+        if (error) setError(error)
+        if (data?.explanation) setNarrative(data.explanation)
+      }
     }
     setLoading(false)
   }
@@ -155,7 +208,9 @@ export default function ExplainTab({ apiAvailable, lang }: Props) {
 
       <div style={{ display: 'flex', gap: '0.5rem' }}>
         <button className="btn-primary" onClick={run} disabled={loading} style={{ flex: 1 }}>
-          {loading ? <><span className="spinner" /> Analyzing...</> : '🤖 Explain with Granite'}
+          {loading && streaming ? <><span className="spinner" /> Streaming explanation...</> :
+           loading ? <><span className="spinner" /> Analyzing...</> :
+           '🤖 Explain with Granite'}
         </button>
         <button className="btn-secondary" onClick={() => setShowTimeline(!showTimeline)}>
           {showTimeline ? 'Hide Timeline' : '📈 Simulate Match'}
@@ -193,9 +248,9 @@ export default function ExplainTab({ apiAvailable, lang }: Props) {
       {error && <div className="error">{error}</div>}
 
       {narrative && (
-        <motion.div className="granite-box" style={{ marginTop: '1rem' }}
-          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-          {narrative}
+        <motion.div className="granite-box" style={{ marginTop: '1rem', maxHeight: 400, overflowY: 'auto' }}
+          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} ref={narrativeRef}>
+          {narrative}{streaming && <span className="cursor-blink">|</span>}
         </motion.div>
       )}
     </motion.div>

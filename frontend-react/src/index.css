@@ -772,6 +772,14 @@ input[type="range"]::-moz-range-thumb {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+.cursor-blink {
+  display: inline-block;
+  animation: blink 0.8s step-end infinite;
+  font-weight: 700;
+  color: var(--gold);
+}
+@keyframes blink { 50% { opacity: 0; } }
+
 hr { border: none; border-top: 1px solid rgba(240, 244, 255, 0.04); margin: 0.8rem 0; }
 
 /* ─── Offline Badge ─── */

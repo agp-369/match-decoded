@@ -20,15 +20,23 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 import numpy as np
+import json
+import hashlib
 
 from model import predictor
 from granite import (
     generate_preview, generate_explain, generate_momentum, generate_tactical,
     generate_var_explanation, generate_story,
     generate_docling_analysis, generate_legends, generate_teach,
+    generate_tactical_stream, generate_preview_stream,
+    generate_explain_stream, generate_momentum_stream,
+    generate_var_stream, generate_story_stream,
+    generate_legends_stream, generate_teach_stream,
     AI_AVAILABLE, WATSONX_AVAILABLE, HF_AVAILABLE, LANG_NAMES,
 )
 from docling_parser import extract_match_details
+from simulate import simulate_match_stream
+from fastapi.responses import StreamingResponse
 
 
 @asynccontextmanager
@@ -290,6 +298,41 @@ def simulate_momentum(req: MomentumSimRequest):
             })
     return {"prediction": result, "momentum": points}
 
+class TeachRequest(BaseModel):
+    question: str = "How does offside work?"
+    lang: str = "en"
+
+
+class SimulateMatchRequest(BaseModel):
+    team_a: str
+    team_b: str
+    is_neutral: bool = True
+    is_major_tournament: bool = True
+
+@app.post("/simulate/match")
+async def simulate_match(req: SimulateMatchRequest):
+    """SSE endpoint: live 90-minute match simulation with Granite commentary."""
+    try:
+        result = predictor.predict(req.team_a, req.team_b, req.is_neutral, req.is_major_tournament)
+    except (ValueError, RuntimeError) as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    seed = int(hashlib.md5(f"{req.team_a}:{req.team_b}:{req.is_neutral}".encode()).hexdigest()[:8], 16)
+    prob_a = result["team_a_win_prob"]
+    prob_b = result["team_b_win_prob"]
+    stats_a = result["stats_a"]
+    stats_b = result["stats_b"]
+
+    return StreamingResponse(
+        simulate_match_stream(req.team_a, req.team_b, prob_a, prob_b, stats_a, stats_b, seed),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
 @app.post("/explain/momentum")
 def momentum_analysis(req: ExplainRequest):
     try:
@@ -319,6 +362,166 @@ def tactical_analysis(req: ExplainRequest):
         lang=req.lang,
     )
     return {"prediction": result, "analysis": analysis}
+
+
+def _event_stream(gen):
+    """Wrap a token generator into SSE events."""
+    try:
+        for token in gen:
+            yield f"data: {json.dumps({'token': token})}\n\n"
+        yield "data: [DONE]\n\n"
+    except Exception as e:
+        yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+
+@app.post("/explain/stream/tactical")
+def tactical_analysis_stream(req: ExplainRequest):
+    """SSE streaming version of tactical analysis."""
+    try:
+        result = predictor.predict(req.team_a, req.team_b, req.is_neutral, req.is_major_tournament)
+    except (ValueError, RuntimeError) as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    _ensure_ai()
+    return StreamingResponse(
+        _event_stream(generate_tactical_stream(
+            req.team_a, req.team_b,
+            result["team_a_win_prob"], result["draw_prob"], result["team_b_win_prob"],
+            result["stats_a"], result["stats_b"],
+            result["is_neutral"], result["is_major_tournament"],
+            lang=req.lang,
+        )),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
+    )
+
+
+@app.post("/explain/stream/preview")
+def preview_match_stream(req: ExplainRequest):
+    """SSE streaming version of pre-match preview."""
+    try:
+        result = predictor.predict(req.team_a, req.team_b, req.is_neutral, req.is_major_tournament)
+    except (ValueError, RuntimeError) as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    _ensure_ai()
+    return StreamingResponse(
+        _event_stream(generate_preview_stream(
+            result["team_a"], result["team_b"],
+            result["team_a_win_prob"], result["draw_prob"], result["team_b_win_prob"],
+            result["stats_a"], result["stats_b"],
+            result["is_neutral"], result["is_major_tournament"],
+            lang=req.lang,
+        )),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
+    )
+
+
+@app.post("/explain/stream/decision")
+def explain_decision_stream(req: ExplainRequest):
+    """SSE streaming version of decision trace."""
+    try:
+        result = predictor.predict(req.team_a, req.team_b, req.is_neutral, req.is_major_tournament)
+    except (ValueError, RuntimeError) as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    _ensure_ai()
+    importances = predictor.get_feature_importances()
+    top_features = [f["name"] for f in importances[:3]]
+    return StreamingResponse(
+        _event_stream(generate_explain_stream(
+            result["team_a_win_prob"], result["draw_prob"], result["team_b_win_prob"],
+            result["stats_a"], result["stats_b"],
+            top_features, lang=req.lang,
+        )),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
+    )
+
+
+@app.post("/explain/stream/momentum")
+def momentum_analysis_stream(req: ExplainRequest):
+    """SSE streaming version of momentum analysis."""
+    try:
+        result = predictor.predict(req.team_a, req.team_b, req.is_neutral, req.is_major_tournament)
+    except (ValueError, RuntimeError) as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    _ensure_ai()
+    return StreamingResponse(
+        _event_stream(generate_momentum_stream(
+            result["team_a"], result["team_b"],
+            result["team_a_win_prob"], result["team_b_win_prob"],
+            lang=req.lang,
+        )),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
+    )
+
+
+@app.post("/explain/stream/var")
+def var_explanation_stream(req: VARRequest):
+    """SSE streaming version of VAR explained."""
+    _ensure_ai()
+    return StreamingResponse(
+        _event_stream(generate_var_stream(req.team_a, req.team_b, req.scenario, lang=req.lang)),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
+    )
+
+
+@app.post("/explain/stream/story")
+def match_story_stream(req: ExplainRequest):
+    """SSE streaming version of match story."""
+    try:
+        result = predictor.predict(req.team_a, req.team_b, req.is_neutral, req.is_major_tournament)
+    except (ValueError, RuntimeError) as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    _ensure_ai()
+    return StreamingResponse(
+        _event_stream(generate_story_stream(
+            req.team_a, req.team_b,
+            result["team_a_win_prob"], result["draw_prob"], result["team_b_win_prob"],
+            result["stats_a"], result["stats_b"],
+            result["is_neutral"], result["is_major_tournament"],
+            lang=req.lang,
+        )),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
+    )
+
+
+@app.post("/explain/stream/legends")
+def legends_matchup_stream(req: LegendsRequest):
+    """SSE streaming version of legends matchup."""
+    _ensure_ai()
+    try:
+        if req.team_a not in predictor.team_stats:
+            raise HTTPException(status_code=400, detail=f"Unknown team: {req.team_a}")
+        if req.team_b not in predictor.team_stats:
+            raise HTTPException(status_code=400, detail=f"Unknown team: {req.team_b}")
+        stats_a = predictor.team_stats[req.team_a]
+        stats_b = predictor.team_stats[req.team_b]
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    return StreamingResponse(
+        _event_stream(generate_legends_stream(
+            req.team_a, req.team_b, req.era_a, req.era_b,
+            stats_a, stats_b, lang=req.lang,
+        )),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
+    )
+
+
+@app.post("/explain/stream/teach")
+def teach_me_stream(req: TeachRequest):
+    """SSE streaming version of teach me."""
+    _ensure_ai()
+    return StreamingResponse(
+        _event_stream(generate_teach_stream(req.question, lang=req.lang)),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
+    )
 
 
 @app.post("/explain/var")
@@ -377,11 +580,6 @@ def legends_matchup(req: LegendsRequest):
         },
         "narrative": narrative,
     }
-
-
-class TeachRequest(BaseModel):
-    question: str = "How does offside work?"
-    lang: str = "en"
 
 
 @app.post("/explain/teach")

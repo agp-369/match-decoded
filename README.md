@@ -19,6 +19,7 @@ AI-powered football match explainability — IBM Granite · LangChain · Docling
 | Frontend | [match-decoded.vercel.app](https://match-decoded.vercel.app) |
 | Backend API | [match-decoded-api.onrender.com](https://match-decoded-api.onrender.com) |
 | Repository | [github.com/agp-369/match-decoded](https://github.com/agp-369/match-decoded) |
+| Demo Video | [youtu.be/cyWw_Q9yWig](https://youtu.be/cyWw_Q9yWig) |
 
 ---
 

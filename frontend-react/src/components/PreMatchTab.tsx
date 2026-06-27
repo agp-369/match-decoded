@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { cachedTeams, teamFlag, apiPost, fetchMomentum, fmtPct, type Prediction, type MomentumPoint } from '../api'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
@@ -77,6 +77,61 @@ export default function PreMatchTab({ apiAvailable, wcMode, lang }: Props) {
     ? QUICK_MATCHUPS.filter(([x, y]) => teams.includes(x) && teams.includes(y))
     : QUICK_MATCHUPS
 
+  const [streaming, setStreaming] = useState(false)
+  const abortRef = useRef<AbortController | null>(null)
+  const narrativeRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (narrativeRef.current) narrativeRef.current.scrollTop = narrativeRef.current.scrollHeight
+  }, [narrative])
+
+  const runStreamNarrative = async (body: Record<string, unknown>): Promise<boolean> => {
+    const ctrl = new AbortController()
+    abortRef.current = ctrl
+    try {
+      const r = await fetch(`${API}/explain/stream/preview`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: ctrl.signal,
+      })
+      if (!r.ok) { r.body?.cancel(); return false }
+
+      const reader = r.body?.getReader()
+      if (!reader) return false
+
+      const decoder = new TextDecoder()
+      let buffer = ''
+      setNarrative('')
+      setStreaming(true)
+
+      while (true) {
+        const { value, done } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n\n')
+        buffer = lines.pop() || ''
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue
+          const payload = line.slice(6).trim()
+          if (payload === '[DONE]') continue
+          try {
+            const data = JSON.parse(payload)
+            if (data.error) { setError(data.error); continue }
+            if (data.token) setNarrative(prev => prev + data.token)
+          } catch { continue }
+        }
+      }
+      return true
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name !== 'AbortError') return false
+      return false
+    } finally {
+      setStreaming(false)
+      abortRef.current = null
+    }
+  }
+
   const run = async () => {
     if (!a || !b || a === b) return
     setLoading(true)
@@ -84,16 +139,22 @@ export default function PreMatchTab({ apiAvailable, wcMode, lang }: Props) {
     setMomentum([])
     setError('')
 
+    const body = { team_a: a, team_b: b, is_neutral: neutral, is_major_tournament: major, lang }
+
     if (apiAvailable) {
-      const [predRes, narrRes, momRes] = await Promise.allSettled([
+      const [predRes, momRes] = await Promise.allSettled([
         apiPost<Prediction>('/predict', { team_a: a, team_b: b, is_neutral: neutral, is_major_tournament: major }),
-        apiPost<{ narrative: string }>('/explain/preview', { team_a: a, team_b: b, is_neutral: neutral, is_major_tournament: major, lang }),
         fetchMomentum(a, b, neutral, major),
       ])
       if (predRes.status === 'fulfilled' && predRes.value.data) setPred(predRes.value.data)
-      if (narrRes.status === 'fulfilled' && narrRes.value.data?.narrative) setNarrative(narrRes.value.data.narrative)
-      if (narrRes.status === 'fulfilled' && narrRes.value.error) setError(narrRes.value.error)
       if (momRes.status === 'fulfilled' && momRes.value?.momentum) setMomentum(momRes.value.momentum)
+
+      const streamed = await runStreamNarrative(body)
+      if (!streamed) {
+        const { data, error } = await apiPost<{ narrative: string }>('/explain/preview', body)
+        if (error) setError(error)
+        if (data?.narrative) setNarrative(data.narrative)
+      }
     }
     setLoading(false)
   }
@@ -215,7 +276,9 @@ export default function PreMatchTab({ apiAvailable, wcMode, lang }: Props) {
 
           <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.8rem' }}>
             <button className="btn-primary" onClick={run} disabled={loading} style={{ flex: 1 }}>
-              {loading ? <><span className="spinner" /> Analyzing...</> : '🤖 Analyze with Granite'}
+              {loading && streaming ? <><span className="spinner" /> Streaming narrative...</> :
+               loading ? <><span className="spinner" /> Analyzing...</> :
+               '🤖 Analyze with Granite'}
             </button>
             <button className="btn-secondary" onClick={() => { if (momentum.length === 0) fetchMomentum(a, b, neutral, major).then(r => { if (r?.momentum) setMomentum(r.momentum); setShowMomentum(!showMomentum) }); else setShowMomentum(!showMomentum) }}>
               {showMomentum ? 'Hide Timeline' : '📈 Match Timeline'}
@@ -255,9 +318,9 @@ export default function PreMatchTab({ apiAvailable, wcMode, lang }: Props) {
           {error && <div className="error">{error}</div>}
 
           {narrative && (
-            <motion.div className="granite-box" style={{ marginTop: '1rem' }}
-              initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-              {narrative}
+            <motion.div className="granite-box" style={{ marginTop: '1rem', maxHeight: 400, overflowY: 'auto' }}
+              initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} ref={narrativeRef}>
+              {narrative}{streaming && <span className="cursor-blink">|</span>}
             </motion.div>
           )}
         </motion.div>

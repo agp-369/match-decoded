@@ -11,7 +11,7 @@ from typing import Optional
 
 from langchain_core.messages import SystemMessage, HumanMessage
 
-from backend.langchain_prompts import (
+from langchain_prompts import (
     PREVIEW_TEMPLATE, EXPLAIN_TEMPLATE, MOMENTUM_TEMPLATE, TACTICAL_TEMPLATE,
     VAR_TEMPLATE, STORY_TEMPLATE, DOCLING_ANALYSIS_TEMPLATE, LEGENDS_TEMPLATE,
     TEACH_TEMPLATE,
@@ -132,6 +132,108 @@ def _hf_chat(system: str, human: str, max_tokens: int) -> str:
     raise RuntimeError(f"HuggingFace API unavailable: {last_error}")
 
 
+def _hf_chat_stream(system: str, human: str, max_tokens: int = 500):
+    """Sync generator: stream tokens from HuggingFace chat completions (SSE)."""
+    global _hf_working_model
+    import time
+
+    messages = []
+    if system:
+        messages.append({"role": "system", "content": system})
+    messages.append({"role": "user", "content": human})
+
+    models_to_try = [_hf_working_model] if _hf_working_model else []
+    models_to_try += [m for m in HF_MODEL_IDS if m != _hf_working_model]
+    last_error = ""
+
+    for model_id in models_to_try:
+        for attempt in range(2):
+            try:
+                resp = requests.post(
+                    f"{HF_API_BASE}/chat/completions",
+                    json={
+                        "model": model_id,
+                        "messages": messages,
+                        "max_tokens": max_tokens,
+                        "temperature": 0.7,
+                        "top_p": 0.9,
+                        "stream": True,
+                        "repetition_penalty": 1.05,
+                    },
+                    headers={
+                        "Authorization": f"Bearer {HF_TOKEN}",
+                        "Content-Type": "application/json",
+                    },
+                    stream=True,
+                    timeout=180,
+                )
+                if resp.status_code == 503:
+                    if attempt < 1:
+                        time.sleep(20)
+                        continue
+                if resp.status_code == 401:
+                    last_error = f"Unauthorized for {model_id} (check HF_TOKEN)"
+                    break
+                if resp.status_code != 200:
+                    last_error = f"HF error {resp.status_code} for {model_id}: {resp.text[:200]}"
+                    break
+
+                _hf_working_model = model_id
+                for line in resp.iter_lines(decode_unicode=True):
+                    if not line:
+                        continue
+                    if not line.startswith("data: "):
+                        continue
+                    payload = line[6:].strip()
+                    if payload == "[DONE]":
+                        return
+                    if not payload:
+                        continue
+                    try:
+                        chunk = json.loads(payload)
+                        delta = (chunk.get("choices") or [{}])[0].get("delta", {})
+                        token = delta.get("content", "")
+                        if token:
+                            yield token
+                    except json.JSONDecodeError:
+                        continue
+                return
+
+            except requests.exceptions.Timeout:
+                last_error = f"Timeout for {model_id}"
+                continue
+            except requests.exceptions.RequestException as e:
+                last_error = f"Request failed for {model_id}: {e}"
+                break
+
+    raise RuntimeError(f"HuggingFace streaming unavailable: {last_error}")
+
+
+def query_granite_chat_stream(system: str, human: str, max_tokens: int = 500):
+    """Sync generator: stream tokens from Granite (watsonx.ai or HuggingFace)."""
+    if not human.strip():
+        raise ValueError("Empty prompt")
+
+    if HF_AVAILABLE:
+        try:
+            yield from _hf_chat_stream(system, human, max_tokens)
+            return
+        except Exception as e:
+            logger.warning(f"HuggingFace streaming failed, trying watsonx.ai: {e}")
+
+    if WATSONX_AVAILABLE:
+        try:
+            prompt = f"{system}\n\n{human}" if system else human
+            result = _query_watsonx(prompt, max_tokens)
+            for token in result:
+                yield token
+            return
+        except Exception as e:
+            logger.error(f"watsonx.ai streaming also failed: {e}")
+
+    raise RuntimeError("No AI provider available for streaming. Set HF_TOKEN or WATSONX_API_KEY.")
+
+
 def query_granite(prompt: str, max_tokens: int = 300) -> str:
     """Query IBM Granite — legacy flat-text entry point."""
     return query_granite_chat("", prompt, max_tokens)
@@ -171,6 +273,109 @@ def query_granite_chat(system: str, human: str, max_tokens: int = 300) -> str:
     if errors:
         msg += " Errors: " + "; ".join(errors)
     raise RuntimeError(msg)
+
+
+def _render_stream(prompt_template, lang: str = "en", **kwargs):
+    """Render a prompt template and stream tokens from Granite."""
+    tpl = make_prompt(prompt_template, lang) if lang != "en" else prompt_template
+    msg = tpl.format_prompt(**kwargs)
+    system = ""
+    human = ""
+    for m in msg.messages:
+        if isinstance(m, SystemMessage):
+            system = m.content
+        elif isinstance(m, HumanMessage):
+            human = m.content
+    yield from query_granite_chat_stream(system, human)
+
+
+def generate_tactical_stream(team_a, team_b, prob_a, prob_draw, prob_b,
+                              stats_a, stats_b, neutral, major, lang="en"):
+    """Stream tactical analysis tokens from Granite."""
+    yield from _render_stream(TACTICAL_TEMPLATE, lang,
+        team_a=team_a, team_b=team_b,
+        prob_a_pct=f"{prob_a*100:.1f}", prob_draw_pct=f"{prob_draw*100:.1f}",
+        prob_b_pct=f"{prob_b*100:.1f}",
+        form_a_pct=f"{stats_a['form']*100:.0f}", form_b_pct=f"{stats_b['form']*100:.0f}",
+        goal_avg_a=f"{stats_a['goal_avg']:.2f}", goal_avg_b=f"{stats_b['goal_avg']:.2f}",
+        venue_desc="neutral venue" if neutral else f"{team_a} home game",
+        tournament_desc="major tournament match" if major else "friendly match",
+    )
+
+
+def generate_preview_stream(team_a, team_b, prob_a, prob_draw, prob_b,
+                             stats_a, stats_b, neutral, major, lang="en"):
+    """Stream preview narrative tokens from Granite."""
+    venue = "Neutral venue" if neutral else f"{team_a} is home"
+    tournament = "Major tournament match" if major else "Friendly match"
+    yield from _render_stream(PREVIEW_TEMPLATE, lang,
+        team_a=team_a, team_b=team_b,
+        prob_a_pct=f"{prob_a*100:.1f}", prob_draw_pct=f"{prob_draw*100:.1f}",
+        prob_b_pct=f"{prob_b*100:.1f}",
+        winrate_a=f"{stats_a['winrate']:.1%}", goal_avg_a=f"{stats_a['goal_avg']:.2f}",
+        form_a=f"{stats_a['form']:.1%}",
+        winrate_b=f"{stats_b['winrate']:.1%}", goal_avg_b=f"{stats_b['goal_avg']:.2f}",
+        form_b=f"{stats_b['form']:.1%}",
+        venue=venue, tournament=tournament,
+    )
+
+
+def generate_explain_stream(prob_a, prob_draw, prob_b,
+                             stats_a, stats_b, feature_importances, lang="en"):
+    """Stream decision trace tokens from Granite."""
+    yield from _render_stream(EXPLAIN_TEMPLATE, lang,
+        prob_a_pct=f"{prob_a*100:.1f}", prob_draw_pct=f"{prob_draw*100:.1f}",
+        prob_b_pct=f"{prob_b*100:.1f}",
+        features=", ".join(feature_importances) if feature_importances else "historical win rates, goal averages, recent form",
+    )
+
+
+def generate_momentum_stream(team_a, team_b, prob_a, prob_b, lang="en"):
+    """Stream momentum analysis tokens from Granite."""
+    yield from _render_stream(MOMENTUM_TEMPLATE, lang,
+        team_a=team_a, team_b=team_b,
+        prob_a_pct=f"{prob_a*100:.1f}", prob_b_pct=f"{prob_b*100:.1f}",
+    )
+
+
+def generate_var_stream(team_a, team_b, scenario, lang="en"):
+    """Stream VAR explanation tokens from Granite."""
+    yield from _render_stream(VAR_TEMPLATE, lang,
+        team_a=team_a, team_b=team_b, scenario=scenario,
+    )
+
+
+def generate_story_stream(team_a, team_b, prob_a, prob_draw, prob_b,
+                           stats_a, stats_b, neutral, major, lang="en"):
+    """Stream match story tokens from Granite."""
+    yield from _render_stream(STORY_TEMPLATE, lang,
+        team_a=team_a, team_b=team_b,
+        prob_a_pct=f"{prob_a*100:.1f}", prob_draw_pct=f"{prob_draw*100:.1f}",
+        prob_b_pct=f"{prob_b*100:.1f}",
+        winrate_a=f"{stats_a['winrate']:.1%}", goal_avg_a=f"{stats_a['goal_avg']:.2f}",
+        form_a_pct=f"{stats_a['form']*100:.0f}", matches_a=int(stats_a['matches']),
+        winrate_b=f"{stats_b['winrate']:.1%}", goal_avg_b=f"{stats_b['goal_avg']:.2f}",
+        form_b_pct=f"{stats_b['form']*100:.0f}", matches_b=int(stats_b['matches']),
+        venue_desc="neutral venue" if neutral else f"{team_a} home",
+        tournament_desc="major tournament" if major else "friendly",
+    )
+
+
+def generate_legends_stream(team_a, team_b, era_a, era_b,
+                             stats_a, stats_b, lang="en"):
+    """Stream legends matchup tokens from Granite."""
+    yield from _render_stream(LEGENDS_TEMPLATE, lang,
+        team_a=team_a, team_b=team_b, era_a=era_a, era_b=era_b,
+        winrate_a=f"{stats_a['winrate']:.1%}", goal_avg_a=f"{stats_a['goal_avg']:.2f}",
+        matches_a=stats_a.get('matches', stats_a.get('matches_played', 0)),
+        winrate_b=f"{stats_b['winrate']:.1%}", goal_avg_b=f"{stats_b['goal_avg']:.2f}",
+        matches_b=stats_b.get('matches', stats_b.get('matches_played', 0)),
+    )
+
+
+def generate_teach_stream(question, lang="en"):
+    """Stream teach-me explanation tokens from Granite."""
+    yield from _render_stream(TEACH_TEMPLATE, lang, question=question)
 
 
 def _render(prompt_template, lang: str = "en", **kwargs) -> str:

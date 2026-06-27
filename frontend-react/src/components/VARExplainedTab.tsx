@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
-import { cachedTeams, teamFlag, apiPost } from '../api'
+import { cachedTeams, teamFlag, apiPost, API } from '../api'
 
 const VAR_SCENARIOS = [
   'A goal is disallowed for offside after a 3-minute VAR review',
@@ -21,6 +21,9 @@ export default function VARExplainedTab({ apiAvailable, lang = 'en' }: Props) {
   const [explanation, setExplanation] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [streaming, setStreaming] = useState(false)
+  const abortRef = useRef<AbortController | null>(null)
+  const explanationRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const all = cachedTeams().map(x => x.name)
@@ -29,17 +32,62 @@ export default function VARExplainedTab({ apiAvailable, lang = 'en' }: Props) {
     if (all.length > 0 && !all.includes(b)) setB(all[Math.min(1, all.length - 1)])
   }, [])
 
+  useEffect(() => {
+    if (explanationRef.current) explanationRef.current.scrollTop = explanationRef.current.scrollHeight
+  }, [explanation])
+
+  const runStream = async (body: Record<string, unknown>): Promise<boolean> => {
+    const ctrl = new AbortController()
+    abortRef.current = ctrl
+    try {
+      const r = await fetch(`${API}/explain/stream/var`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body), signal: ctrl.signal,
+      })
+      if (!r.ok) { r.body?.cancel(); return false }
+      const reader = r.body?.getReader()
+      if (!reader) return false
+      const decoder = new TextDecoder()
+      let buffer = ''
+      setExplanation('')
+      setStreaming(true)
+      while (true) {
+        const { value, done } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n\n')
+        buffer = lines.pop() || ''
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue
+          const payload = line.slice(6).trim()
+          if (payload === '[DONE]') continue
+          try {
+            const data = JSON.parse(payload)
+            if (data.error) { setError(data.error); continue }
+            if (data.token) setExplanation(prev => prev + data.token)
+          } catch { continue }
+        }
+      }
+      return true
+    } catch { return false }
+    finally { setStreaming(false); abortRef.current = null }
+  }
+
   const run = async () => {
     if (!a || !b || a === b) return
     setLoading(true)
     setExplanation('')
     setError('')
+
+    const body = { team_a: a, team_b: b, scenario, lang }
+
     if (apiAvailable) {
-      const { data, error } = await apiPost<{ explanation: string }>('/explain/var', {
-        team_a: a, team_b: b, scenario, lang,
-      })
-      if (error) setError(error)
-      if (data?.explanation) setExplanation(data.explanation)
+      const streamed = await runStream(body)
+      if (!streamed) {
+        const { data, error } = await apiPost<{ explanation: string }>('/explain/var', body)
+        if (error) setError(error)
+        if (data?.explanation) setExplanation(data.explanation)
+      }
     }
     setLoading(false)
   }
@@ -88,15 +136,17 @@ export default function VARExplainedTab({ apiAvailable, lang = 'en' }: Props) {
       </div>
 
       <button className="btn-primary" onClick={run} disabled={loading} style={{ marginTop: '0.5rem' }}>
-        {loading ? <><span className="spinner" /> Analyzing decision...</> : '⚖️ Explain with Granite'}
+        {loading && streaming ? <><span className="spinner" /> Streaming explanation...</> :
+         loading ? <><span className="spinner" /> Analyzing decision...</> :
+         '⚖️ Explain with Granite'}
       </button>
 
       {error && <div className="error">{error}</div>}
 
       {explanation && (
-        <motion.div className="granite-box" style={{ marginTop: '0.8rem' }}
-          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-          {explanation}
+        <motion.div className="granite-box" style={{ marginTop: '0.8rem', maxHeight: 400, overflowY: 'auto' }}
+          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} ref={explanationRef}>
+          {explanation}{streaming && <span className="cursor-blink">|</span>}
         </motion.div>
       )}
     </motion.div>

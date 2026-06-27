@@ -10,9 +10,11 @@ import TacticalAnalysisTab from './components/TacticalAnalysisTab'
 import VARExplainedTab from './components/VARExplainedTab'
 import MatchStoryTab from './components/MatchStoryTab'
 import TeachMeTab from './components/TeachMeTab'
+import LiveMatchTab from './components/LiveMatchTab'
 
-type Tab = 'prematch' | 'whatif' | 'legends' | 'explain' | 'docling' | 'tactical' | 'var' | 'story' | 'teach'
+type Tab = 'prematch' | 'whatif' | 'legends' | 'explain' | 'docling' | 'tactical' | 'var' | 'story' | 'teach' | 'livematch'
 const TABS: { key: Tab; label: string; icon: string; desc: string }[] = [
+  { key: 'livematch', label: 'Live Match', icon: '⚽', desc: '90-min simulation + AI commentary' },
   { key: 'prematch', label: 'Pre-Match Preview', icon: '📊', desc: 'Prediction + Narrative' },
   { key: 'tactical', label: 'Tactical Analysis', icon: '🧠', desc: 'WHY each side wins' },
   { key: 'var', label: 'VAR Explained', icon: '⚖️', desc: 'WHY decisions are made' },
@@ -33,7 +35,7 @@ const LANG_OPTIONS = [
 ]
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>('tactical')
+  const [tab, setTab] = useState<Tab>('livematch')
   const [apiAvailable, setApiAvailable] = useState<boolean | null>(null)
   const [healthData, setHealthData] = useState<{
     ai_available: boolean; active_provider: string; teams_available: number; ibm_technologies: string[];
@@ -182,6 +184,7 @@ export default function App() {
             ))}
           </div>
 
+          {tab === 'livematch' && <LiveMatchTab apiAvailable={isOnline} lang={lang} />}
           {tab === 'prematch' && <PreMatchTab apiAvailable={isOnline} wcMode={wcMode} lang={lang} />}
           {tab === 'tactical' && <TacticalAnalysisTab apiAvailable={isOnline} lang={lang} />}
           {tab === 'var' && <VARExplainedTab apiAvailable={isOnline} lang={lang} />}
