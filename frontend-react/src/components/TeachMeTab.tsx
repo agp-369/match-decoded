@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { apiPost, API } from '../api'
+import { parseConfidence, ConfidenceBadge } from '../confidence'
 
 const FAQ_QUESTIONS = [
   { q: 'How does offside work in football?', icon: '🚩' },
@@ -169,7 +170,7 @@ export default function TeachMeTab({ apiAvailable, lang = 'en' }: Props) {
       {answer && (
         <motion.div className="granite-box" style={{ marginTop: '0.5rem', maxHeight: 500, overflowY: 'auto' }}
           initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} ref={outputRef}>
-          {answer}{streaming && <span className="cursor-blink">|</span>}
+          {(() => { const { displayText, score } = parseConfidence(answer); return <>{displayText}{streaming && <span className="cursor-blink">|</span>}<ConfidenceBadge score={score} streaming={streaming} /></> })()}
         </motion.div>
       )}
     </motion.div>

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { cachedTeams, teamFlag, apiPost, API } from '../api'
+import { parseConfidence, ConfidenceBadge } from '../confidence'
 
 const VAR_SCENARIOS = [
   'A goal is disallowed for offside after a 3-minute VAR review',
@@ -146,7 +147,7 @@ export default function VARExplainedTab({ apiAvailable, lang = 'en' }: Props) {
       {explanation && (
         <motion.div className="granite-box" style={{ marginTop: '0.8rem', maxHeight: 400, overflowY: 'auto' }}
           initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} ref={explanationRef}>
-          {explanation}{streaming && <span className="cursor-blink">|</span>}
+          {(() => { const { displayText, score } = parseConfidence(explanation); return <>{displayText}{streaming && <span className="cursor-blink">|</span>}<ConfidenceBadge score={score} streaming={streaming} /></> })()}
         </motion.div>
       )}
     </motion.div>

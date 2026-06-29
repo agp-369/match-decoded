@@ -23,6 +23,7 @@ Rules:
 - Write for a fan audience (plain language, no technical jargon)
 - Keep responses under 150 words unless asked for more detail
 - Never claim to predict the future with certainty — always note probabilities
+- At the end of your response, on a new line, write CONFIDENCE: X/100 where X is how confident you are in this analysis (0=uncertain, 100=certain)
 - {li}"""
 
 def make_prompt(template: ChatPromptTemplate, lang: str = "en") -> ChatPromptTemplate:

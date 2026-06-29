@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import {
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts'
+import { parseConfidence, ConfidenceBadge } from '../confidence'
 import { cachedTeams, teamFlag, apiPost, API, type TeamDetail } from '../api'
 
 interface Props { apiAvailable: boolean; lang?: string }
@@ -239,7 +240,7 @@ export default function LegendsTab({ apiAvailable, lang }: Props) {
       {narrative && (
         <motion.div className="granite-box" style={{ marginTop: '0.8rem', maxHeight: 500, overflowY: 'auto' }}
           initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} ref={outputRef}>
-          {narrative}{streaming && <span className="cursor-blink">|</span>}
+          {(() => { const { displayText, score } = parseConfidence(narrative); return <>{displayText}{streaming && <span className="cursor-blink">|</span>}<ConfidenceBadge score={score} streaming={streaming} /></> })()}
         </motion.div>
       )}
     </motion.div>

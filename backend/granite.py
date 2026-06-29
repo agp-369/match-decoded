@@ -17,6 +17,7 @@ from langchain_prompts import (
     TEACH_TEMPLATE,
     make_prompt, LANG_NAMES,
 )
+import response_cache
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +40,9 @@ HF_AVAILABLE = bool(HF_TOKEN)
 AI_AVAILABLE = WATSONX_AVAILABLE or HF_AVAILABLE
 
 _hf_working_model: str | None = None
+
+response_cache.load()
+response_cache.save()  # ensure cache file exists
 
 
 def _query_watsonx(prompt: str, max_tokens: int) -> str:
@@ -301,7 +305,9 @@ def query_granite_chat(system: str, human: str, max_tokens: int = 300) -> str:
 
 
 def _render_stream(prompt_template, lang: str = "en", **kwargs):
-    """Render a prompt template and stream tokens from Granite."""
+    """Render a prompt template and stream tokens from Granite.
+    Yields string tokens. Cache-aware: returns cached text instantly.
+    """
     tpl = make_prompt(prompt_template, lang) if lang != "en" else prompt_template
     msg = tpl.format_prompt(**kwargs)
     system = ""
@@ -311,7 +317,20 @@ def _render_stream(prompt_template, lang: str = "en", **kwargs):
             system = m.content
         elif isinstance(m, HumanMessage):
             human = m.content
-    yield from query_granite_chat_stream(system, human)
+
+    cached = response_cache.get(system, human)
+    if cached:
+        for c in cached:
+            yield c
+        return
+
+    tokens = []
+    for token in query_granite_chat_stream(system, human):
+        tokens.append(token)
+        yield token
+
+    full = "".join(tokens)
+    response_cache.put(system, human, full)
 
 
 def generate_tactical_stream(team_a, team_b, prob_a, prob_draw, prob_b,

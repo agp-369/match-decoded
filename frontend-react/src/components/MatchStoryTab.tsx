@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { cachedTeams, teamFlag, apiPost, fmtPct, API, type Prediction } from '../api'
+import { parseConfidence, ConfidenceBadge } from '../confidence'
 
 interface Props { apiAvailable: boolean; lang?: string }
 
@@ -224,7 +225,7 @@ export default function MatchStoryTab({ apiAvailable, lang = 'en' }: Props) {
       {story && (
         <motion.div className="granite-box" style={{ marginTop: '0.8rem', maxHeight: 500, overflowY: 'auto', lineHeight: 1.8 }}
           initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} ref={outputRef}>
-          {story}{streaming && <span className="cursor-blink">|</span>}
+          {(() => { const { displayText, score } = parseConfidence(story); return <>{displayText}{streaming && <span className="cursor-blink">|</span>}<ConfidenceBadge score={score} streaming={streaming} /></> })()}
         </motion.div>
       )}
     </motion.div>

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { cachedTeams, teamFlag, apiPost, fetchMomentum, fmtPct, API, type Prediction, type MomentumPoint } from '../api'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { parseConfidence, ConfidenceBadge } from '../confidence'
 
 const QUICK_MATCHUPS: [string, string][] = [
   ['Brazil', 'Argentina'], ['Germany', 'France'], ['England', 'Germany'],
@@ -320,7 +321,7 @@ export default function PreMatchTab({ apiAvailable, wcMode, lang }: Props) {
           {narrative && (
             <motion.div className="granite-box" style={{ marginTop: '1rem', maxHeight: 400, overflowY: 'auto' }}
               initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} ref={narrativeRef}>
-              {narrative}{streaming && <span className="cursor-blink">|</span>}
+              {(() => { const { displayText, score } = parseConfidence(narrative); return <>{displayText}{streaming && <span className="cursor-blink">|</span>}<ConfidenceBadge score={score} streaming={streaming} /></> })()}
             </motion.div>
           )}
         </motion.div>
