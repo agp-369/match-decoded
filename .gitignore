@@ -22,3 +22,6 @@ Thumbs.db
 
 # Orphaned utilities (unused)
 frontend-react/src/useSSE.ts
+docs/
+scripts/gen_report.py
+match_report*.pdf

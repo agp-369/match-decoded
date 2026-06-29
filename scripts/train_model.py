@@ -48,6 +48,13 @@ df['is_major'] = df['tournament'].isin([
 df['is_friendly'] = (df['tournament'] == 'Friendly').astype(int)
 df = df.sort_values('date').reset_index(drop=True)
 
+# Drop future matches with no score (e.g. unplayed World Cup 2026 fixtures)
+pre_drop = len(df)
+df = df.dropna(subset=['home_score', 'away_score'])
+dropped = pre_drop - len(df)
+if dropped:
+    print(f"  Dropped {dropped} future matches with NaN scores")
+
 print("Computing ELO ratings...")
 elo = {team: 1500 for team in valid_teams}
 elo_history = []
@@ -219,11 +226,24 @@ for team in sorted(valid_teams):
 
 print(f"Teams: {len(team_stats)}")
 
+# Extract final ELO ratings per team (captured at end of sequence)
+elo_ratings = {team: round(elo[team], 1) for team in valid_teams}
+
+# Build serializable H2H matrix (string keys for pickle)
+h2h_matrix = {}
+for (t1, t2), rec in h2h.items():
+    key = f"{t1}||{t2}"
+    h2h_matrix[key] = rec
+
+print(f"ELO ratings: {len(elo_ratings)} teams, H2H pairs: {len(h2h_matrix)}")
+
 # Save backward-compatible
 joblib.dump(final_model, MODELS_DIR / 'match_predictor.pkl', compress=3)
 joblib.dump({
     'team_stats': team_stats,
     'feature_cols': feature_cols,
+    'elo_ratings': elo_ratings,
+    'h2h_matrix': h2h_matrix,
 }, MODELS_DIR / 'team_data.pkl', compress=3)
 joblib.dump({
     'model': final_model,

@@ -192,7 +192,7 @@ export default function App() {
             ))}
           </div>
 
-          {tab === 'livematch' && <LiveMatchTab apiAvailable={isOnline} lang={lang} />}
+          {tab === 'livematch' && <LiveMatchTab apiAvailable={isOnline} />}
           {tab === 'prematch' && <PreMatchTab apiAvailable={isOnline} wcMode={wcMode} lang={lang} />}
           {tab === 'tactical' && <TacticalAnalysisTab apiAvailable={isOnline} lang={lang} />}
           {tab === 'var' && <VARExplainedTab apiAvailable={isOnline} lang={lang} />}

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { cachedTeams, teamFlag, API } from '../api'
 
-interface Props { apiAvailable: boolean; lang?: string }
+interface Props { apiAvailable: boolean }
 
 interface MatchEvent {
   type: string; minute: number; team_a: string; team_b: string;
@@ -32,7 +32,7 @@ function clockClass(running: boolean, finished: boolean): string {
   return 'idle'
 }
 
-export default function LiveMatchTab({ apiAvailable }: Props) {
+export default function LiveMatchTab({ apiAvailable: _apiAvailable }: Props) {
   const [teams, setTeams] = useState<string[]>(['Brazil', 'Argentina', 'England', 'France', 'Germany'])
   const [a, setA] = useState('Brazil')
   const [b, setB] = useState('England')
